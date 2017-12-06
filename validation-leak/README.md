@@ -62,6 +62,22 @@ instance Applicative f => Applicative (Lift f) where
 
 Though, `($ x) <$> f` is better than `f <*> pure x`, so it's not immediately clear whether the `Applicative` instance for `Lift` should be changed.
 
+UPDATE: reddit user **xalyama** [suggested](https://www.reddit.com/r/haskell/comments/7hy4ml/validation_leaks/dqunqnf/) the following version
+
+```haskell
+instance Semigroup e => Applicative (Validation e) where
+  pure = Success
+
+  Failure e1 <*> b = Failure $ case b of
+    Failure e2 -> e1 <> e2
+    Success _  -> e1
+  Success _  <*> Failure e  = Failure  e
+  Success f  <*> Success x  = Success (f x)
+```
+
+which [doesn't stream only the last occured failure](https://www.reddit.com/r/haskell/comments/7hy4ml/validation_leaks/dquoiow/),
+but streams all previous ones and also doesn't require `e` to be a `Monoid`. Hence this version is strictly better than what is commonly used at the time of writing.
+
 ## Testing
 
 A simple test
