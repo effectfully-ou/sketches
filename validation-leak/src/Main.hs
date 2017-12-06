@@ -6,9 +6,9 @@ import Except
 import qualified Leak
 import qualified Fine
 
-multifail :: (Except f [Int], Applicative f) => f [Int]
+multifail :: (Except f [Int], Applicative f) => f ()
 multifail = go 1000000 where
-  go 0 = pure []
+  go 0 = pure ()
   go n = throw [n] *> go (n - 1)
 
 main :: IO ()
