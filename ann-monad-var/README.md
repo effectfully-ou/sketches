@@ -36,7 +36,7 @@ data D = D
 
 ## A solution
 
-So I wrote a library that deals with these problems: monad-var ([github](https://github.com/effectfully/monad-var), [hackage](https://hackage.haskell.org/package/monad-var)). There are classes like
+So I wrote a library that deals with these problems: `monad-var` ([github](https://github.com/effectfully/monad-var), [hackage](https://hackage.haskell.org/package/monad-var)). There are classes like
 
 ```haskell
 class Monad m => MonadRead m v where
@@ -82,7 +82,7 @@ which prints
 'a''b'
 ```
 
-The library makes some opinionated choices. E.g. the `read` function (from the `MonadRead` type class) which has the name already reserved in the `Prelude`. I regret each time I use this function instead of `readMaybe`, so I always hide it in my custom preludes and there are no clashes for me. Your mileage may vary of course, but in any case you can import `MonadVar` `qualified` as `Var` and then write `Var.read`.
+The library makes some opinionated choices. E.g. there is that `read` function (from the `MonadRead` type class) which has the name already reserved in the `Prelude`. I regret each time I use this function instead of `readMaybe`, so I always hide it in my custom preludes and there are no clashes for me. Your mileage may vary of course, but in any case you can import `MonadVar` `qualified` as `Var` and then write `Var.read`.
 
 All `mutate*` functions are strict.
 
