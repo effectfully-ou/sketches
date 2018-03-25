@@ -36,7 +36,7 @@ data D = D
 
 ## A solution
 
-So I wrote a library that deals with these problems: [monad-var](https://hackage.haskell.org/package/monad-var). There are classes like
+So I wrote a library that deals with these problems: monad-var ([github](https://github.com/effectfully/monad-var), [hackage](https://hackage.haskell.org/package/monad-var)). There are classes like
 
 ```haskell
 class Monad m => MonadRead m v where
@@ -82,19 +82,9 @@ which prints
 'a''b'
 ```
 
-The library makes some opinionated choices. The most controversial is the presense of instances such as:
+The library makes some opinionated choices. E.g. the `read` function (from the `MonadRead` type class) which has the name already reserved in the `Prelude`. I regret each time I use this function instead of `readMaybe`, so I always hide it in my custom preludes and there are no clashes for me. Your mileage may vary of course, but in any case you can import `MonadVar` `qualified` as `Var` and then write `Var.read`.
 
-```haskell
-instance (MonadTrans t, Monad (t m), MonadWrite m v) => MonadWrite (t m) v where
-  write = lift .* write
-  {-# INLINE write #-}
-
-instance (MonadTrans t, Monad (t m), MonadMutate  m v) => MonadMutate  (t m) v where
-  mutate = lift .* mutate
-  {-# INLINE mutate #-}
-```
-
-One might want to catch exceptions while mutating a variable or, I don't know, log each `write` in a custom monad. But for my use case it was much more convenient to just define those instances once and for all `MonadTrans` data types.
+All `mutate*` functions are strict.
 
 Type inference is top-down. I.e. in
 
@@ -131,16 +121,28 @@ results in
 
 while it's clearly should be `Found hole: _ :: Bool` and Agda would do the right thing here.
 
-Another controversial choice is the `read` function which has the name already reserved in the `Prelude`. I regret each time I use this function instead of `readMaybe`, so I always hide it in my custom preludes and there are no clashes for me. Your mileage may vary of course, but in any case you can import `MonadVar` `qualified` as `Var` and then write `Var.read`.
+Previously there were rather controversial `MonadTrans` instances:
 
-By adopting the library in my codebase I got an immediate and huge advantage: all defined setters worked across different monadic stacks and base monads. Most of the time I needed to modify a `TVar` in `IO` or `t IO`, but sometimes in `STM`, defining all these modifiers manually or placing `liftIO . atomically` everywhere or zooming into a data structure in-place was quite annoying and noisy.
+```haskell
+instance (MonadTrans t, Monad (t m), MonadWrite m v) => MonadWrite (t m) v where
+  write = lift .* write
+  {-# INLINE write #-}
+
+instance (MonadTrans t, Monad (t m), MonadMutate  m v) => MonadMutate  (t m) v where
+  mutate = lift .* mutate
+  {-# INLINE mutate #-}
+```
+
+which were very convenient for me as I got an immediate and huge advantage: all defined setters worked across different monadic stacks and base monads. Most of the time I needed to modify a `TVar` in `IO` or `t IO`, but sometimes in `STM`, defining all these modifiers manually or placing `liftIO . atomically` everywhere or zooming into a data structure in-place was quite annoying and noisy.
+
+I removed those instance since it's better for a public library to be more flexible.
 
 ## Problems
 
 But lenses in `monad-var` are not quite satifactory. Here are the problems:
 
  - `_Var` and `VarM` are setters, so you have to define getters separately.
- - `_Var` and `_VarM` are distinct combinators and you can't just have one setter for both pure and monadic mutating. This means that in order to have getters and pure and monadic setters, essentially 3x code duplication is required.
+ - `_Var` and `_VarM` are distinct combinators and you can't just have one setter for both pure and monadic mutating. This means that in order to define getters and pure and monadic setters for some fields, essentially 3x code duplication is required.
  - How are we able to both write and modify a variable using a single setter? That's because we always read the contents of a variable before writing anything to it, so even though `v & _Var .~ x` doesn't need to call `read`, it calls and ignores the result.
 
 And there is an encoding that seems to solve all these problems. It uses profunctor optics, so you'll like it. Stay tuned.
