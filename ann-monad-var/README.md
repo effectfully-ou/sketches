@@ -2,7 +2,7 @@
 
 It's a common practice in Haskell to separate pure code from effectful as much as possible. One instance of said practice is to store the state of your program in some huge record, define pure updaters of this state and apply them in a `State` monad or put the state into some kind of variable (`IORef`, `MVar`, `TVar`, whatever) and update the contents of the variable. But there is a problem with this approach: suddenly, just to update a field you need to unpack and pack the whole state. Once you're in such a position, `Lens` (or similar libraries) is the only sensible way to make updates, because otherwise it's an enormous amount of boilerplate, but this causes even more computational overhead. In
 
-```haskell
+```haskell     
 st & x .~ ...
    & y .~ ...
    & z .~ ...
@@ -119,7 +119,7 @@ results in
     • In the expression: _
 ```
 
-while it's clearly should be `Found hole: _ :: Bool` and Agda would do the right thing here.
+while it clearly should be `Found hole: _ :: Bool` and Agda would do the right thing here.
 
 Previously there were rather controversial `MonadTrans` instances:
 
