@@ -1,4 +1,4 @@
-# monad-var-pro
+# extensible-monadic-lenses
 
 ## Preface
 
@@ -324,7 +324,7 @@ Hence "zooming" works in both the pure and effectful cases and plays well with g
 
 ## Conclusions
 
-We've considered a framework which allows to define extensible monadic lenses that compose well (together and with pure ones). Not only lenses themselves are extensible, but also classes of actions and actions in those classes as well. Pure and effectful setters share the same operator names. And this framework is built on top of a somewhat well-known encoding of lenses, so the whole profunctor optics infrastructure is at our hands. Another very pleasant thing is that the described representation of lenses mixed with [indexed profunctor optics](http://oleg.fi/gists/posts/2017-04-26-indexed-poptics.html) finally gives us a two-digit number of type variables:
+We've considered a framework which allows to define extensible monadic lenses that compose well (together and with pure ones). Not only lenses themselves are extensible, but also classes of actions and actions in those classes are extensible as well. Pure and effectful setters share the same operator names. And this framework is built on top of a somewhat well-known encoding of lenses, so the whole profunctor optics infrastructure is at our hands. Another very pleasant thing is that the described representation of lenses mixed with [indexed profunctor optics](http://oleg.fi/gists/posts/2017-04-26-indexed-poptics.html) finally gives us a two-digit number of type variables:
 
 ```haskell
 type Optic p q i j k l s t a b = p i j a b -> q k l s t
