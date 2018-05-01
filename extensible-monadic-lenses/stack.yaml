@@ -1,0 +1,7 @@
+resolver: lts-11.3
+
+packages:
+- .
+
+extra-deps:
+- monad-var-0.2.1.0
