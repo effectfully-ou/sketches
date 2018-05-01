@@ -161,7 +161,7 @@ Now we can use lenses in the usual pure way and also monadically write/mutate va
 
 ## Composable
 
-What does a thing like `var & _Var . _1 .~ 'a'` mean? It's writing to a variable, but this writing does require a read, because we overwrite only the first element of a tuple stored in the variable and the second must be kept the same. Hence `WeakWriteAction` gets transformed into `MutateAction` sometimes. This is expressed as
+What does a thing like `var & _Var . _1 .~ 'a'` mean? It's writing to a variable, but this writing does require a read, because we overwrite only the first element of a tuple stored in the variable and the second must be kept the same. Hence `WriteAction` gets transformed into `MutateAction` sometimes. This is expressed as
 
 ```haskell
 newtype Action action a b = Action (action a b)
@@ -285,7 +285,8 @@ I started to think about all of this, because I had a huge state full of differe
 _Of :: (s -> a) -> Lens s b a b
 _Of = lmap
 
--- | Go down by the first lens into a data structure and apply the second lens to the result. This throws away the part of the structure skipped by the first lens.
+-- | Go down by the first lens into a data structure and apply the second lens to the result.
+-- This throws away the part of the structure skipped by the first lens.
 (./)
   :: Strong o
   => Optic (Forget s) (Forget s) v x s y
@@ -296,7 +297,7 @@ _G ./ _U = _Of (^. _G) . _U
 
 E.g. `('a', ('b', 'c')) & _2 ./ _2 %~ succ` results in `('b','d')` and `(./)` supports monadic lenses as well: `('d', var) & _2 ./ _Var %~ succ` is essentially the same as `Var.mutate_ var succ`.
 
-It is also possible to zoom into a state monadically:
+It's also possible to zoom into a state monadically:
 
 ```haskell
 (!/)
@@ -319,7 +320,7 @@ do
   fileVar ^! _Var !/ _File !/ _File >>= putStrLn
 ```
 
-Hence "zooming" works in both the pure and effectful settings and plays well with getters and setters.
+Hence "zooming" works in both the pure and effectful cases and plays well with getters and setters.
 
 ## Conclusions
 
