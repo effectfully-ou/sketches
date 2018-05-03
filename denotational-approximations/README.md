@@ -49,6 +49,6 @@ Speaking generally, **it is obviously good to have laws**, but it is not obvious
 
 > On the other hand, I'm not willing to give up on `PutPut` as it forms the backbone of reasoning about code written with lens and determining the canonical nature of the combinators we supply. -- Edward Kmett
 
-but I'm not yet convinced that supposed laws for monadic lenses are of the same importance, so I disagree with the folllowing sentiment:
+but I'm not yet convinced that supposed laws for monadic lenses are of the same importance, so I do not agree currently with the following sentiment:
 
 > the above situation [no laws for monadic lenses] ultimately killed any expression of a "monadic lens."
