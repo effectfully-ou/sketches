@@ -1,6 +1,6 @@
 # Denotational under- and over-approximations
 
-I've recently made a post about monadic lenses and Edward Kmett reacted with
+I've recently made a [post about monadic lenses](https://github.com/effectfully/sketches/tree/master/extensible-monadic-lenses) and Edward Kmett reacted with
 
 > So here is an admittedly fairly brutal question that I pose to anybody who offers me "monadic lenses":
 
