@@ -41,7 +41,7 @@ f 0 = return 1
 f x = f (x - 1) >>= return
 ```
 
-which builds this grotesque thing in memory: `((f (x - 3) >>= return) >>= return) >>= return`. Yes, `m >>= return` and `m` differ operationally despite being denotationally the same thing. Even though GHC tries hard to be smart and optimize as much as possible, rewrite rules and inlining are not a panacea and optimizations can interfere with each other. That flaw can be fixed by presenting laws in a way like "`m >>= return === m`, but prefer the latter for efficiency reasons".
+which builds this grotesque thing in memory: `((f (x - 3) >>= return) >>= return) >>= return`. Yes, `m >>= return` and `m` differ operationally despite being denotationally the same thing. Even though GHC tries hard to be smart and optimize as much as possible, rewrite rules and inlining are not a panacea and optimizations can interfere with each other. That flaw can be fixed by presenting laws in a way like "`(<*>) === ap`, but prefer the former for efficiency reasons".
 
 The fact that a definition obeys some laws doesn't make it automatically well-behaved. `monad-control` has laws. Did it help? [No](http://blog.ezyang.com/2012/01/monadbasecontrol-is-unsound/).
 
