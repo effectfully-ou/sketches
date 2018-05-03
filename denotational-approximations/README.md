@@ -41,7 +41,7 @@ f x = f (x - 1) >>= return
 
 which builds this grotesque thing in memory: `((f (x - 3) >>= return) >>= return) >>= return`. Yes, `m >>= return` and `m` differ operationally despite being denotationally the same thing. Even though GHC tries hard to be smart and optimize as much as possible, rewrite rules and inlining are not a panacea and optimizations can interfere with each other.
 
-The fact that a definition obeys some denotational laws doesn't make it automatically well-behaved. `monad-control` has laws. Did it help? [No](http://blog.ezyang.com/2012/01/monadbasecontrol-is-unsound/).
+The fact that a definition obeys some laws doesn't make it automatically well-behaved. `monad-control` has laws. Did it help? [No](http://blog.ezyang.com/2012/01/monadbasecontrol-is-unsound/).
 
 Speaking generally, it is obviously good to have laws even if they are approximations, but it is not obviously bad not to have laws. Speaking less generally, laws for pure lenses are very important, because
 
