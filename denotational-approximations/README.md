@@ -45,7 +45,7 @@ which builds this grotesque thing in memory: `((f (x - 3) >>= return) >>= return
 
 The fact that a definition obeys some laws doesn't make it automatically well-behaved. `monad-control` has laws. Did it help? [No](http://blog.ezyang.com/2012/01/monadbasecontrol-is-unsound/).
 
-Speaking generally, **it is obviously good to have laws**, but it is not obviously bad not to have laws in case they weren't found for a particular abstraction (`Foldable` doesn't have clear laws and it's in `base`). Speaking less generally, laws for pure lenses are very important, because
+Speaking generally, **it is obviously good to have laws**, but it is not obviously bad not to have laws in case they weren't found for a particular abstraction (`Foldable`, `Alternative`, `MonadPlus` -- all these do not have clear laws and they're in `base`, `data-default` has 200k+ downloads, `lens` has ad hoc classes like those in `Control.Lens.Cons`, etc). Speaking less generally, laws for pure lenses are very important, because
 
 > On the other hand, I'm not willing to give up on `PutPut` as it forms the backbone of reasoning about code written with lens and determining the canonical nature of the combinators we supply. -- Edward Kmett
 
