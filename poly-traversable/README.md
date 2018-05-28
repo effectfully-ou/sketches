@@ -154,7 +154,7 @@ type family s `DeterminesShapeOf` t where
 type s `SameShape` t = (s `DeterminesShapeOf` t, t `DeterminesShapeOf` s)
 ```
 
-We need the `s \`SameShape\` s` constraint in order for these and similar things to type check:
+We need the ``s `SameShape` s`` constraint in order for these and similar things to type check:
 
 ```haskell
 omap :: PolyFunctor s => (Element s -> Element s) -> s -> s
@@ -262,7 +262,7 @@ withSymmetricShapes :: s `SameShape` t => Proxy (s, t) -> (t `SameShape` s => c)
 withSymmetricShapes _ x = x
 ```
 
-which essentially says "if you need to satisfy the `t \`SameShape\` s` constraint, it suffices to know `s \`SameShape\` t`.
+which essentially says "if you need to satisfy the ``t `SameShape` s`` constraint, it suffices to know ``s `SameShape` t``.
 
 On the other hand, `SameShape` is not reflexive:
 
@@ -271,7 +271,7 @@ withReflexiveShape :: Proxy s -> (s `SameShape` s => c) -> c
 withReflexiveShape _ x = x
 ```
 
-results in an error that essentially says `s \`SameShape\` s` cannot be decided. But since `SameShape` is just a type-level function, we can prove properties about it. We'll use a rather well-known trick (described [here](https://kseo.github.io/posts/2017-02-05-avoid-overlapping-instances-with-closed-type-families.html) for one example) that allows to avoid overlapping instances, but first it's needed to tweak the definition of `DeterminesShapeOf` a bit. Since in `s `\`DeterminesShapeOf`\` t` there is pattern matching on `s` we need to be able to explicitly dispatch on `s` somehow in our proofs in order for `DeterminesShapeOf` to choose either the polymorphic or the monomorphic clause and reduce accordingly (this is the gist of proving with dependent types). So we introduce another type family, `ShapeOf`:
+results in an error that essentially says ``s `SameShape` s`` cannot be decided. But since `SameShape` is just a type-level function, we can prove properties about it. We'll use a rather well-known trick (described [here](https://kseo.github.io/posts/2017-02-05-avoid-overlapping-instances-with-closed-type-families.html) for one example) that allows to avoid overlapping instances, but first it's needed to tweak the definition of `DeterminesShapeOf` a bit. Since in ``s `DeterminesShapeOf` t`` there is pattern matching on `s` we need to be able to explicitly dispatch on `s` somehow in our proofs in order for `DeterminesShapeOf` to choose either the polymorphic or the monomorphic clause and reduce accordingly (this is the gist of proving with dependent types). So we introduce another type family, `ShapeOf`:
 
 ```haskell
 data PolyShape (f :: * -> *)
@@ -315,7 +315,7 @@ withReflexiveShape :: KnownShape s => Proxy s -> (s `SameShape` s => c) -> c
 withReflexiveShape sProxy x = withKnownShape sProxy x x
 ```
 
-This says that since it is obvious that `s \`SameShape\` s` holds for both polymorphic and monomorphic `s`, it holds for any `s`.
+This says that since it is obvious that ``s `SameShape` s`` holds for both polymorphic and monomorphic `s`, it holds for any `s`.
 
 Transitivity is derivable as well:
 
