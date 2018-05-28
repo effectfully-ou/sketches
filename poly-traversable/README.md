@@ -338,4 +338,4 @@ class (Has r n (FldTy r n), r ~ UpdTy r n (FldTy r n))
   setField :: Proxy# n -> r -> t -> UpdTy r n t
 ```
 
-That has unidirectional type inference and with the technique described above we can make it bidirectional. Also this should solve the phantom arguments problem described in the wiki, but I didn't check.
+That has unidirectional type inference and with the technique described above we can make it bidirectional. Also this should solve the phantom arguments problem described in the wiki, but I didn't check. I guess we'll need to move `DeterminesShapeOf` to the `Upd` type class itself.
