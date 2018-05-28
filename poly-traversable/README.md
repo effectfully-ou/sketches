@@ -32,16 +32,17 @@ This allows `omap` to cover a couple of useful cases:
 But you might ask whether it would be better to allow `omap` to be polymorphic as well, so we can have
 
 ```haskell
-`omap @(Unboxed.Vector a) @(Unboxed.Vector b) :: (Unbox a, Unbox b) => (a -> b) -> Unboxed.Vector a -> Unboxed.Vector b
+omap @(Unboxed.Vector a) @(Unboxed.Vector b) :: (Unbox a, Unbox b) => (a -> b) -> Unboxed.Vector a -> Unboxed.Vector b
 ```
 
 and 1. as before. It's easy to come up with a solution:
 
 ```haskell
-class PolyFunctor s t a b | s -> a, t -> b     -- Elements in containers are determined by those containers.
-                          , s b -> t, t a -> s -- If `b` is the type of elements from `t` and `s` has the same shape as `t`,
-                                               -- then `b` and `s` together determine `t`. Same for the other direction.
-                          where
+class PolyFunctor s t a b
+    | s -> a, t -> b     -- Elements in containers are determined by those containers.
+    , s b -> t, t a -> s -- If `b` is the type of elements from `t` and `s` has the same shape as `t`,
+                         -- then `b` and `s` together determine `t`. Same for the other direction.
+    where
   pmap :: (a -> b) -> s -> t
 ```
 
@@ -82,7 +83,7 @@ instance PolyFunctor [Double] [Int] Double Int where
 
 or even
 
-```
+```haskell
 instance PolyFunctor ByteString Text Word8 Char where
   pmap f = Text.pack . map f . BS.unpack
 ```
@@ -143,7 +144,7 @@ type family s `SameShape` t where
   s   `SameShape` t   = s ~ t
 ```
 
-Thus essentially saying that shapes are equal in the polymorphic case if type constructors are equal and in the monomorphic case if whole containers are equal. But here we do pattern matching on both `s` and `t` while it would be more inference-friendly to be able to infer the shape of `s` when the shape of `t` is known and vice versa. So
+thus essentially saying that shapes are equal in the polymorphic case if type constructors are equal and in the monomorphic case if whole containers are equal. But here we do pattern matching on both `s` and `t` while it would be more inference-friendly to be able to infer the shape of `s` when the shape of `t` is known and vice versa. Hence:
 
 ```haskell
 type family s `DeterminesShapeOf` t where
@@ -153,7 +154,7 @@ type family s `DeterminesShapeOf` t where
 type s `SameShape` t = (s `DeterminesShapeOf` t, t `DeterminesShapeOf` s)
 ```
 
-We need the `s ``SameShape`` s` constraint in order for these and similar things to type check:
+We need the `s \`SameShape\` s` constraint in order for these and similar things to type check:
 
 ```haskell
 omap :: PolyFunctor s => (Element s -> Element s) -> s -> s
@@ -172,7 +173,7 @@ If we now add a default instance implementation to each class, e.g.:
 
 it becomes possible to derive instances for `Poly*` classes from their base counterparts:
 
-```
+```haskell
 instance PolyFunctor [a]
 instance PolyFunctor (Maybe a)
 instance PolyFunctor (Const b a)
@@ -261,7 +262,7 @@ withSymmetricShapes :: s `SameShape` t => Proxy (s, t) -> (t `SameShape` s => c)
 withSymmetricShapes _ x = x
 ```
 
-which essentially says "if you need to satisfy the `t ``SameShape`` s` constraint, it suffices to know `s ``SameShape`` t`.
+which essentially says "if you need to satisfy the `t \`SameShape\` s` constraint, it suffices to know `s \`SameShape\` t`.
 
 On the other hand, `SameShape` is not reflexive:
 
@@ -270,7 +271,7 @@ withReflexiveShape :: Proxy s -> (s `SameShape` s => c) -> c
 withReflexiveShape _ x = x
 ```
 
-results in an error that essentially says `s ``SameShape`` s` cannot be decided. But since `SameShape` is just a type-level function, we can prove properties about it. We'll use a rather well-known trick (described [here](https://kseo.github.io/posts/2017-02-05-avoid-overlapping-instances-with-closed-type-families.html) for one example) that allows to avoid overlapping instances, but first it's needed to tweak the definition of `DeterminesShapeOf` a bit. Since in `s ``DeterminesShapeOf`` t` there is pattern matching on `s` we need to be able to explicitly dispatch on `s` somehow in our proofs in order for `DeterminesShapeOf` to choose either the polymorphic or the monomorphic clause and reduce accordingly (this is the gist of proving with dependent types). So we introduce another type family, `ShapeOf`:
+results in an error that essentially says `s \`SameShape\` s` cannot be decided. But since `SameShape` is just a type-level function, we can prove properties about it. We'll use a rather well-known trick (described [here](https://kseo.github.io/posts/2017-02-05-avoid-overlapping-instances-with-closed-type-families.html) for one example) that allows to avoid overlapping instances, but first it's needed to tweak the definition of `DeterminesShapeOf` a bit. Since in `s `\`DeterminesShapeOf`\` t` there is pattern matching on `s` we need to be able to explicitly dispatch on `s` somehow in our proofs in order for `DeterminesShapeOf` to choose either the polymorphic or the monomorphic clause and reduce accordingly (this is the gist of proving with dependent types). So we introduce another type family, `ShapeOf`:
 
 ```haskell
 data PolyShape (f :: * -> *)
@@ -283,7 +284,7 @@ type family ShapeOf s where
 
 which allows to explicitly dispatch on the shape of a container. Now `DeterminesShapeOf` is defined over shapes rather than containers and the `(t ~)` part is abstracted out:
 
-```
+```haskell
 type family SpecifyShapeBy s t where
   SpecifyShapeBy (PolyShape f) t = f (Element t)
   SpecifyShapeBy (MonoShape s) _ = s
@@ -314,7 +315,7 @@ withReflexiveShape :: KnownShape s => Proxy s -> (s `SameShape` s => c) -> c
 withReflexiveShape sProxy x = withKnownShape sProxy x x
 ```
 
-This says that since it is obvious that `s ``SameShape`` s` holds for both polymorphic and monomorphic `s`, it holds for any `s`.
+This says that since it is obvious that `s \`SameShape\` s` holds for both polymorphic and monomorphic `s`, it holds for any `s`.
 
 Transitivity is derivable as well:
 
