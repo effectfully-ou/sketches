@@ -136,6 +136,16 @@ class (PolyFunctor s, PolyFoldable s) => PolyTraversable s where
 
 Now `PolyFunctor` and `PolyTraversable` are single parameter type classes. `pmap` says that it can map `s` to any `t` provided `s` and `t` have the same shape (same for `PolyTraversable`). And as an instance constraint we also require that `s` is of the same shape as `s`, i.e. itself.
 
+We need the ``s `SameShape` s`` constraint in order for these and similar things to type check:
+
+```haskell
+omap :: PolyFunctor s => (Element s -> Element s) -> s -> s
+omap = pmap
+
+pfoldMapDefault :: forall s m. (PolyTraversable s, Monoid m) => (Element s -> m) -> s -> m
+pfoldMapDefault f = getConst . ptraverse @s @s (Const . f)
+```
+
 It only remains to define `SameShape`. We could write
 
 ```haskell
@@ -152,16 +162,6 @@ type family s `DeterminesShapeOf` t where
   s   `DeterminesShapeOf` t = t ~ s
 
 type s `SameShape` t = (s `DeterminesShapeOf` t, t `DeterminesShapeOf` s)
-```
-
-We need the ``s `SameShape` s`` constraint in order for these and similar things to type check:
-
-```haskell
-omap :: PolyFunctor s => (Element s -> Element s) -> s -> s
-omap = pmap
-
-pfoldMapDefault :: forall s m. (PolyTraversable s, Monoid m) => (Element s -> m) -> s -> m
-pfoldMapDefault f = getConst . ptraverse @s @s (Const . f)
 ```
 
 If we now add a default instance implementation to each class, e.g.:
