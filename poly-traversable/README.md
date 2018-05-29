@@ -9,7 +9,7 @@ fmap :: Functor f => (a -> b) -> f a -> f b
 `omap` has this signature:
 
 ```haskell
-fmap :: (Element mono -> Element mono) -> mono -> mono
+omap :: (Element mono -> Element mono) -> mono -> mono
 ```
 
 where `Element` is (quoted from the docs) "type family for getting the type of the elements of a monomorphic container":
