@@ -1,0 +1,14 @@
+name:                avoid-overlapping-recursive
+version:             0.1.0.0
+cabal-version:       >=1.10
+extra-source-files:  README.md
+build-type:          Simple
+
+executable poly-traversable
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  other-modules:       Bonus
+                       BackwardsTF
+                       TF
+  build-depends:       base >= 4.7 && < 5
