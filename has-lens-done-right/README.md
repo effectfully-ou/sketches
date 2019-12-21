@@ -4,7 +4,7 @@
 
 The title is a bit clickbaity, I do not really know whether the solution presented in this post is "done right" or not. But so far it does seem to be better than widely known approaches.
 
-For general context, read the [`record-set-field`](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0158-record-set-field.rst) proposal.
+For general context, read the [`overloaded-record-fields`](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0023-overloaded-record-fields.rst) and (especially) [`record-set-field`](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0158-record-set-field.rst) proposals.
 
 This post first describes known approaches to constructing a `HasLens` class that allows to retrieve a `Lens` into a type (most commonly the lens is focused on a field of the type and is retrieved by the name of the field). Then I outline a new possible solution and show how examples that are troubling for other solutions can be handled with the new one.
 
@@ -17,9 +17,9 @@ Monomorphic lenses:
 - [an ORF page](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/sorf#record-updates)
 - [`Control.Lens.TH.makeFields`](http://hackage.haskell.org/package/lens-4.18.1/docs/Control-Lens-TH.html#v:makeFields)
 - [`data-has`](http://hackage.haskell.org/package/data-has-0.3.0.0/docs/Data-Has.html#t:Has)
-- [`can-i-haz`](http://hackage.haskell.org/package/can-i-haz-0.3.1.0/docs/Control-Monad-Reader-Has.html#t:Has
+- [`can-i-haz`](http://hackage.haskell.org/package/can-i-haz-0.3.1.0/docs/Control-Monad-Reader-Has.html#t:Has)
 - [`has`](https://github.com/nonowarn/has/blob/225931d880efadd433bb18d3c6163f2ff01ba120/src/Data/Has.hs#L79)
-- [`Data.Generics.Product.Fields.HasField'`](https://hackage.haskell.org/package/generic-lens-1.2.0.1/docs/Data-Generics-Product-Fields.html#t:HasField-39-))
+- [`Data.Generics.Product.Fields.HasField'`](https://hackage.haskell.org/package/generic-lens-1.2.0.1/docs/Data-Generics-Product-Fields.html#t:HasField-39-)
 
 Polymorphic lenses + a class with functional dependencies:
 
@@ -42,12 +42,19 @@ Polymorphic lenses + type families:
 
 - [another ORF page](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#record-field-constraints)
 - [a response to ORF](https://raw.githubusercontent.com/ntc2/haskell-records/master/GHCWiki_SimpleOverloadedRecordFields.lhs)
+- [`records-prototype`](https://github.com/adamgundry/records-prototype/blob/master/RecordsPrototype.hs).
 
 The lists of links above do not meant to be exhaustive, they're just to give you an idea of how common each approach is and reference a few existing implementations.
 
+## A bit of history
+
+_It seems_ that [originally](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design) the plan was to implement in GHC the type families approach. Then they [moved](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/magic-classes) to the functional dependencies approach, but somehow [ended up](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0158-record-set-field.rst) accepting the no polymorphism approach.
+
+So let's discuss all of these.
+
 ## No polymorphism
 
-So one possible approach is to simply forbid polymorphism. That might be an acceptable thing for a library, but wiring such a machinery into the compiler is a non-solution. Anything that doesn't have a story for polymorphism, doesn't really make us any closer to solving the records problem, because polymorphism is a must as it's ubiquitous in Haskell code and the hard part of the records problem is how to handle polymorphism -- not how to define a bunch of trivial monomorphic type classes and wire them into the compiler, just because some people said they've been using this machinery in production (the public part of which is [pretty much irrelevant and the entire use case is not representative](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-542767516)) and refused to give examples upon a request ([because closed source](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-542822673)).
+One possible approach is to simply forbid polymorphism. That might be an acceptable thing for a library, but wiring such a machinery into the compiler is a non-solution. Anything that doesn't have a story for polymorphism, doesn't really make us any closer to solving the records problem, because polymorphism is a must as it's ubiquitous in Haskell code and the hard part of the records problem is how to handle polymorphism -- not how to define a bunch of trivial monomorphic type classes and wire them into the compiler, just because some people said they've been using this machinery in production (the public part of which is [pretty much irrelevant and the entire use case is not representative](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-542767516)).
 
 Hence the hard problem of handling polymorphism should drive the research, not [arguments](https://github.com/ghc-proposals/ghc-proposals/pull/158) like
 
@@ -85,7 +92,7 @@ The reason why we're using monomorphic data is that all the approaches seem to w
 
 Lens types (like `Lens`, `Lens'`, etc) and operators (like `(%~)`, `(.~)`, etc) are taken from the `microlens` package, i.e. they are fully compatible and interchangeable with the ones from `lens`.
 
-## Functional dependencies ([full code](src/FunDep))
+## Functional dependencies ([full code](src/FunDep.hs))
 
 The functional dependencies approach looks like this:
 
@@ -323,9 +330,9 @@ Anyway, the first two solutions from the above list look fine.
 
 Fields with rank-n types are generally troubling for any of the approaches (note that type-changing update is completely orthogonal).
 
-## The `SameModulo` approach
+## The `SameModulo` approach ([full code](src/Main.hs))
 
-Here is the core of the `SameModulo` approach:
+Here is the core of the novel `SameModulo` approach:
 
 ```haskell
 type family Get (x :: k) s
