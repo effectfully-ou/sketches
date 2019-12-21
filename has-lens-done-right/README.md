@@ -1,7 +1,18 @@
 # `HasLens` done right
 
+## Preface
 
-monorphic:
+The title is a bit clickbaity, I do not really know whether the solution presented in this post is "done right" or not. But so far it does seem to be better than widely known approaches.
+
+For general context, read the [`record-set-field`](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0158-record-set-field.rst) proposal.
+
+This post first describes known approaches to constructing a `HasLens` class that allows to retrieve a `Lens` into a type (most commonly the lens is focused on a field of the type and is retrieved by the name of the field). Then I outline a new possible solution and show how examples that are troubling for other solutions can be handled with the new one.
+
+This post builds on the ideas from one of my previous posts: [`poly-traversable`](https://github.com/effectfully/sketches/tree/master/poly-traversable) where I suggested that the technique developed there can be used for solving the records problem. Reading that post is not a prerequisite though as this writing is self-contained and I improved the technique after Adam Gundry [pointed out](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-542589304) that the previous machinery didn't allow for poly-kinded update.
+
+## Known approaches to the `HasLens` problem
+
+Monomorphic lenses:
 
 - [an ORF page](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/sorf#record-updates)
 - [`Control.Lens.TH.makeFields`](http://hackage.haskell.org/package/lens-4.18.1/docs/Control-Lens-TH.html#v:makeFields)
@@ -10,32 +21,35 @@ monorphic:
 - [`has`](https://github.com/nonowarn/has/blob/225931d880efadd433bb18d3c6163f2ff01ba120/src/Data/Has.hs#L79)
 - [`Data.Generics.Product.Fields.HasField'`](https://hackage.haskell.org/package/generic-lens-1.2.0.1/docs/Data-Generics-Product-Fields.html#t:HasField-39-))
 
-functional dependencies:
+Polymorphic lenses + a class with functional dependencies:
 
 - [an ORF page](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/magic-classes#design)
 - [`Control.Lens.Tuple`](https://hackage.haskell.org/package/lens-4.18.1/docs/Control-Lens-Tuple.html)
+- [`Record`](https://github.com/nikita-volkov/record/blob/e534886eaed0e1179eb6fe6d73ec08e2dd26f521/library/Record.hs#L32)
 - [a comment in the RST thread](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449590983)
 - [a response to ORF](https://raw.githubusercontent.com/ntc2/haskell-records/master/GHCWiki_SimpleOverloadedRecordFields.lhs)
 - [an SO answer](https://stackoverflow.com/a/34974164/3237465)
 
-functional dependencies + cleverness:
+Polymorphic lenses + a class with functional dependencies + cleverness to get decent type inference:
 
 - [`Data.Generics.Product.Fields.HasField`](https://hackage.haskell.org/package/generic-lens-1.2.0.1/docs/Data-Generics-Product-Fields.html#t:HasField)
 
-incoherent mix:
+Incoherent mix between the last two:
 
 - [`Data.Generics.Labels.Field`](https://hackage.haskell.org/package/generic-lens-1.2.0.1/docs/Data-Generics-Labels.html#t:Fields)
 
-type families:
+Polymorphic lenses + type families:
 
 - [another ORF page](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#record-field-constraints)
 - [a response to ORF](https://raw.githubusercontent.com/ntc2/haskell-records/master/GHCWiki_SimpleOverloadedRecordFields.lhs)
 
+The lists of links above do not meant to be exhaustive, they're just to give you an idea of how common each approach is and reference a few existing implementations.
+
 ## No polymorphism
 
-So one possible approach is to simply forbid polymorphism. That might be an acceptable thing for a library, but wiring such a machinery into the compiler is a non-solution. Anything that doesn't have a story for polymorphism, doesn't really make us any closer to solving the records problem, because polymorphism is a must as it's ubiquitous in Haskell code and the hard part of the records problem is how to handle polymorphism -- not how to define a bunch of trivial monomorphic type classes and wire them into the compiler, just because some people said they've been using this machinery in production (the public part of which is [pretty much irrelevant and the entire use case is not representative](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-542767516)) and refused to give examples upon a request ([because closed source](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-542822673)). And what kind of argument is that? "We've been using this in production". People use Go in production and many are quite happy with it, even though from a PLT perspective that language is a joke.
+So one possible approach is to simply forbid polymorphism. That might be an acceptable thing for a library, but wiring such a machinery into the compiler is a non-solution. Anything that doesn't have a story for polymorphism, doesn't really make us any closer to solving the records problem, because polymorphism is a must as it's ubiquitous in Haskell code and the hard part of the records problem is how to handle polymorphism -- not how to define a bunch of trivial monomorphic type classes and wire them into the compiler, just because some people said they've been using this machinery in production (the public part of which is [pretty much irrelevant and the entire use case is not representative](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-542767516)) and refused to give examples upon a request ([because closed source](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-542822673)).
 
-So the hard problem of handling polymorphism should drive the research, not [arguments](https://github.com/ghc-proposals/ghc-proposals/pull/158) like
+Hence the hard problem of handling polymorphism should drive the research, not [arguments](https://github.com/ghc-proposals/ghc-proposals/pull/158) like
 
 > Q: Should we allow type changing lenses? No - this results in additional implementation complexity. Let's aim to get something through, rather than nothing, and a future dedicated soul can extend it.
 
@@ -71,7 +85,7 @@ The reason why we're using monomorphic data is that all the approaches seem to w
 
 Lens types (like `Lens`, `Lens'`, etc) and operators (like `(%~)`, `(.~)`, etc) are taken from the `microlens` package, i.e. they are fully compatible and interchangeable with the ones from `lens`.
 
-## Functional dependencies
+## Functional dependencies ([full code](src/FunDep))
 
 The functional dependencies approach looks like this:
 
@@ -153,8 +167,6 @@ This use cases are rather weird and we have to pay by having broken type inferen
 
 Additionally, two machineries with weak type inference won't compose without explicit types sprinkled over the code. Anything that goes into the compiler had better be as inference-friendly as possible as that allows libraries to cut some corners when they need that and make not very inference-friendly APIs.
 
-See the [full code](src/FunDep).
-
 Note that [Data.Generics.Product.Fields](https://hackage.haskell.org/package/generic-lens-1.2.0.1/docs/Data-Generics-Product-Fields.html#t:HasField) does something different: it provides a single instance (modulo an additional instance that is irrelevant for this discussion) that looks like this:
 
 ```haskell
@@ -184,7 +196,7 @@ The note that the instance refers to is [this one](https://github.com/kcsongor/g
 
 The machinery looks clever, but I don't know how good it's in terms of type inference and whether it has any edge cases or clutters type signatures or has any other disadvantages.
 
-## Type families
+## Type families ([full code](src/TF.hs))
 
 The type families approach ([code taken](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#limited-type-changing-update) directly from GHC wiki) looks like this:
 
@@ -252,7 +264,7 @@ we'll see
     • Found type wildcard ‘_’ standing for ‘([Char] -> [Char]) -> User’
 ```
 
-I.e. everything got inferred correctly. Yay!
+I.e. everything got inferred correctly.
 
 Unfortunately, types only get inferred in a bottom-up fashion. I.e. if the type of the record being updated is known, then the compiler will infer the type of the function used for updating the record. But if the type of the result is known as well as the type of the updating function, then the type of the record being updated won't be inferred. I.e.
 
@@ -287,6 +299,8 @@ instance Upd User "name" () where
     setField _ (User email _) () = NamelessGod email
 ```
 
+See more examples in [`records-prototype`](https://github.com/adamgundry/records-prototype/blob/master/RecordsPrototype.hs).
+
 The main problems of this approach are:
 
 - unidirectional type inference
@@ -301,68 +315,52 @@ This limitation applies to all the approaches mentioned in this documented (incl
 - [via tuples](http://r6.ca/blog/20120623T104901Z.html)
 - [via linearization](https://raw.githubusercontent.com/ntc2/haskell-records/master/GHCWiki_SimpleOverloadedRecordFields.lhs)
 
-## Note about errors
+But then there is another question, in `a { x = x', y = y' }` do we want to call `setField` twice instead of taking the product of corresponding setters? It would be nice if we could generically update the entire record at once regardless of whether some updates are type-changing or not. And if we could do that, then this would also solve the multiple type-changing updates problem.
+
+Anyway, the first two solutions from the above list look fine.
+
+## [Fields with rank-n types](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#higher-rank-fields)
+
+Fields with rank-n types are generally troubling for any of the approaches (note that type-changing update is completely orthogonal).
 
 ## The `SameModulo` approach
+
+Here is the core of the `SameModulo` approach:
 
 ```haskell
 type family Get (x :: k) s
 
 class SameModulo x t s => SameModulo (x :: k) s t where
-    mkLensAt :: (a ~ Get x s, b ~ Get x t) => Proxy# x -> Lens s t a b
+    lensAt :: (a ~ Get x s, b ~ Get x t) => Proxy# x -> Lens s t a b
 ```
 
+We have the `Get` type family that allows to get the type of the `x` field in `s` just like in the type families approach and we have the `SameModulo` class that allows to retrieve a lens focused on the `x` field of `s`, whose type is naturally `Get x s`, which we abbreviate as `a`.
+
+Whenever `SameModulo x s t` holds, `SameModulo x t s` must also hold as the `SameModulo x t s => ...` constraint indicates. I.e. `SameModulo x` is a symmetric relation by definition.
+
+`SameModulo` is an internal type class and we need some convenient user-facing API. There are choices, but here is the simplest one:
 
 ```haskell
-class (SameModulo x s t, a ~ Get x s, b ~ Get x t) => HasLens x s t a b where
-    lensAt :: Proxy# x -> Lens s t a b
-
-instance (SameModulo x s t, a ~ Get x s, b ~ Get x t) => HasLens x s t a b where
-    lensAt = mkLensAt
-
-type HasLens' x s a = HasLens x s s a a
+class (SameModulo x s t, a ~ Get x s, b ~ Get x t) => HasLens x s t a b
+instance (SameModulo x s t, a ~ Get x s, b ~ Get x t) => HasLens x s t a b
 
 lens :: forall x s t a b. HasLens x s t a b => Lens s t a b
 lens = lensAt @x proxy#
 ```
 
+`HasLens x s t a b` is pretty much a class alias for `SameModulo x s t`, except the `a` and `b` variables are explicit in the former. This makes type signatures nicer and I personally ([not only](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449422693)) find [error messages](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449419429) more to the point.
+
+### The `User` example
+
+Providing an instance for `User` is trivial:
 
 ```haskell
-data User = User
-    { userEmail :: String
-    , userName  :: String
-    }
-
 type instance Get "name" User = String
 instance t ~ User => SameModulo "name" User t where
-    mkLensAt _ f (User email name) = User email <$> f name
+    lensAt _ f (User email name) = User email <$> f name
 ```
 
-
-```haskell
-
-type instance Get "_1" (a, b) = a
-instance t ~ (a', b) => SameModulo "_1" (a, b) t where
-    mkLensAt _ f (x, y) = (, y) <$> f x
-
-type instance Get "_1" (a, b, c) = a
-instance t ~ (a', b, c) => SameModulo "_1" (a, b, c) t where
-    mkLensAt _ f (x, y, z) = (, y, z) <$> f x
-```
-
-```haskell
--- Found type wildcard ‘_’ standing for ‘((Int, Bool), Char)’
-polyTupleTest :: _
-polyTupleTest = (("abc", True), 'd') & lens @"_1" . lens @"_1" %~ length
-```
-
-```haskell
-poly
-    :: (HasLens "_1" s t sa tb, HasLens "_1" sa tb a b)
-    => Lens s t a b
-poly = lens @"_1" . lens @"_1"
-```
-
+Unlike with the other approaches, type inference is bidirectional:
 
 ```haskell
 -- Found type wildcard ‘_’ standing for ‘([Char] -> String) -> User’
@@ -374,19 +372,49 @@ test1 :: _ -> User
 test1 user = user & lens @"name" .~ "new name"
 ```
 
+In both the cases types are inferred correctly.
 
-### [The phantom arguments problem](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-phantom-arguments) is solved :
+### Polymorphism
+
+Providing an instance for tuples is also trivial (the `_1` function comes from the `microlens` package)
+
+```haskell
+type instance Get "_1" (a, b) = a
+instance t ~ (a', b) => SameModulo "_1" (a, b) t where
+    lensAt _ = _1
+```
+
+Type changing update works:
+
+```haskell
+-- Found type wildcard ‘_’ standing for ‘((Int, Bool), Char)’
+polyTupleTest :: _
+polyTupleTest = (("abc", True), 'd') & lens @"_1" . lens @"_1" %~ length
+```
+
+Type signatures for general combinators look nicely (when written by hand. Inference for polymorphic things does not work and even if it worked, it probably would infer something not nice at all):
+
+```haskell
+poly
+    :: (HasLens "_1" s t sa tb, HasLens "_1" sa tb a b)
+    => Lens s t a b
+poly = lens @"_1" . lens @"_1"
+```
+
+### [The phantom arguments problem](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-phantom-arguments) is solved:
 
 ```haskell
 data Ph (a :: k) (bs :: [Bool]) = Ph { foo :: Int }
 
 type instance Get "foo" (Ph a b) = Int
 instance t ~ Ph (a' :: k') bs' => SameModulo "foo" (Ph a b) t where
-    mkLensAt _ f (Ph i) = Ph <$> f i
+    lensAt _ f (Ph i) = Ph <$> f i
 
-ph :: Lens (Ph (a :: k) b) (Ph (a' :: k') d) Int Int
+ph :: Lens (Ph (a :: k) bs) (Ph (a' :: k') bs') Int Int
 ph = lens @"foo"
 ```
+
+Note that we have poly-kinded update (`a :: k` to `a' :: k'`).
 
 ### [The type families problem](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-type-families) is solved:
 
@@ -396,8 +424,18 @@ data Tf (a :: k) = Tf { bar :: Goo a }
 
 type instance Get "bar" (Tf a) = Goo a
 instance t ~ Tf (a' :: k') => SameModulo "bar" (Tf (a :: k)) t where
-    mkLensAt _ f (Tf x) = Tf <$> f x
+    lensAt _ f (Tf x) = Tf <$> f x
 
 tf :: Lens (Tf (a :: k)) (Tf (a' :: k')) (Goo a) (Goo a')
 tf = lens @"bar"
 ```
+
+Note that we have poly-kinded update under a type family (`a :: k` to `a' :: k'`).
+
+## Conclusions
+
+The `SameModulo` approach seems to be less noisy than the type families approach while at the same time not having some of its drawbacks and providing better type inference than other approaches.
+
+I wonder if we could try to replace the clever `generic-lens` machinery with this approach and check whether there are any downsides. We'll also have to come up with a way to report nice error messages (which `generic-lens` currently does).
+
+Thoughts?

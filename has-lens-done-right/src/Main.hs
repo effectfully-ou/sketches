@@ -30,13 +30,10 @@ main = mempty
 type family Get (x :: k) s
 
 class SameModulo x t s => SameModulo (x :: k) s t where
-    mkLensAt :: (a ~ Get x s, b ~ Get x t) => Proxy# x -> Lens s t a b
+    lensAt :: (a ~ Get x s, b ~ Get x t) => Proxy# x -> Lens s t a b
 
-class (SameModulo x s t, a ~ Get x s, b ~ Get x t) => HasLens x s t a b where
-    lensAt :: Proxy# x -> Lens s t a b
-
-instance (SameModulo x s t, a ~ Get x s, b ~ Get x t) => HasLens x s t a b where
-    lensAt = mkLensAt
+class (SameModulo x s t, a ~ Get x s, b ~ Get x t) => HasLens x s t a b
+instance (SameModulo x s t, a ~ Get x s, b ~ Get x t) => HasLens x s t a b
 
 type HasLens' x s a = HasLens x s s a a
 
@@ -56,7 +53,7 @@ data User = User
 
 type instance Get "name" User = String
 instance t ~ User => SameModulo "name" User t where
-    mkLensAt _ f (User email name) = User email <$> f name
+    lensAt _ f (User email name) = User email <$> f name
 
 -- Found type wildcard ‘_’ standing for ‘([Char] -> String) -> User’
 test0 :: _
@@ -71,11 +68,15 @@ test1 user = user & lens @"name" .~ "new name"
 
 type instance Get "_1" (a, b) = a
 instance t ~ (a', b) => SameModulo "_1" (a, b) t where
-    mkLensAt _ f (x, y) = (, y) <$> f x
+    lensAt _ = _1
 
 type instance Get "_1" (a, b, c) = a
 instance t ~ (a', b, c) => SameModulo "_1" (a, b, c) t where
-    mkLensAt _ f (x, y, z) = (, y, z) <$> f x
+    lensAt _ = _1
+
+-- Found type wildcard ‘_’ standing for ‘((a, Char), Bool)’
+test2 :: forall a. (Enum a, Num a) => _
+test2 = ((0 :: a, 'a'), True) & lens @"_1" . lens @"_1" %~ succ
 
 mono :: (HasLens' "_1" s sa, HasLens' "_1" sa a) => Lens' s a
 mono = lens' @"_1" . lens' @"_1"
@@ -109,9 +110,9 @@ data Ph (a :: k) (bs :: [Bool]) = Ph { foo :: Int }
 
 type instance Get "foo" (Ph a b) = Int
 instance t ~ Ph (a' :: k') bs' => SameModulo "foo" (Ph a b) t where
-    mkLensAt _ f (Ph i) = Ph <$> f i
+    lensAt _ f (Ph i) = Ph <$> f i
 
-ph :: Lens (Ph (a :: k) b) (Ph (a' :: k') d) Int Int
+ph :: Lens (Ph (a :: k) bs) (Ph (a' :: k') bs') Int Int
 ph = lens @"foo"
 
 -- The type families problem is solved (https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-type-families):
@@ -122,7 +123,7 @@ data Tf (a :: k) = Tf { bar :: Goo a }
 
 type instance Get "bar" (Tf a) = Goo a
 instance t ~ Tf (a' :: k') => SameModulo "bar" (Tf (a :: k)) t where
-    mkLensAt _ f (Tf x) = Tf <$> f x
+    lensAt _ f (Tf x) = Tf <$> f x
 
 tf :: Lens (Tf (a :: k)) (Tf (a' :: k')) (Goo a) (Goo a')
 tf = lens @"bar"
