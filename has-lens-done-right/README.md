@@ -1,5 +1,9 @@
 # `HasLens` done right
 
+**EDIT**: as [it turned out](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568217485) the solution presented here is worse than the already known functional dependencies solution, because the latter also has proper type inference, but is generally safer and simpler. This was pointed out in this [response](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568206301).
+
+So this post is more of an intro to the type-changing update problem space rather than something interesting in terms of original research.
+
 ## Preface
 
 The title is a bit clickbaity, I do not really know whether the solution presented in this post is "done right" or not. But so far it does seem to perform better than widely known approaches. Jump straight to [Conclusions](https://github.com/effectfully/sketches/tree/master/has-lens-done-right#conclusions) if you're only interested in what makes the new approach better. See also [this response](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568206301) for how they can achieve all the same benefits that the new machinery provides by implementing special rules regarding the `HasLens` class in the compiler. They've also got better type inference with one of the old approaches, but I currently do not undestand how they've managed to do that and whether their solution is sufficient.
@@ -25,6 +29,7 @@ Polymorphic lenses + a class with functional dependencies:
 
 - [an ORF page](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/magic-classes#design)
 - [`Control.Lens.Tuple`](https://hackage.haskell.org/package/lens-4.18.1/docs/Control-Lens-Tuple.html)
+- [`Optics.Label`](https://hackage.haskell.org/package/optics-core-0.2/docs/Optics-Label.html#t:LabelOptic)
 - [`Record`](https://github.com/nikita-volkov/record/blob/e534886eaed0e1179eb6fe6d73ec08e2dd26f521/library/Record.hs#L32)
 - [a comment in the RST thread](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449590983)
 - [a response to ORF](https://raw.githubusercontent.com/ntc2/haskell-records/master/GHCWiki_SimpleOverloadedRecordFields.lhs)
@@ -116,7 +121,7 @@ instance HasLens "name" User User String String where
     lensAt _ f (User email name) = User email <$> f name
 ```
 
-But the major problem of this representation is that it breaks type inference. Consider this example:
+But the major problem of this representation is that it breaks type inference (but see the **EDIT** in the beginning of the file). Consider this example:
 
 ```haskell
 test = User "john@gmail.com" "John" & lens @"name" %~ _
@@ -444,9 +449,5 @@ Note that we have poly-kinded update under a type family (`a :: k` to `a' :: k'`
 So the `SameModulo` approach
 
 - compared to the monomorphic version: does the job
-- compared to the version with functional dependencies: type inference is not broken
+- compared to the version with functional dependencies: more clutter and unsafety (see the **EDIT** in the beginning of the file)
 - compared to the version with type families: type inference is not half-broken, less noise, doesn't fall apart on phantom types and type families.
-
-I wonder if we could try to replace the clever `generic-lens` machinery with this approach and check whether there are any downsides. We'll also have to come up with a way to report nice error messages (which `generic-lens` currently does).
-
-Thoughts?
