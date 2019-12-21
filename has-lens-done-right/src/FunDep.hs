@@ -16,6 +16,7 @@
 
 module FunDep where
 
+import           Data.Proxy
 import           Data.Void
 import           GHC.Exts   (Proxy#, proxy#)
 import           Lens.Micro hiding (lens)
@@ -91,3 +92,35 @@ instance HasLens "_1" (a, b) (a', b) a a' where
 -- Found type wildcard ‘_’ standing for ‘((a, Char), Bool)’
 test2 :: forall a. (Enum a, Num a) => _
 test2 = ((0 :: a, 'a'), True) & lens @"_1" . lens @"_1" %~ succ
+
+-- Phantoms
+--------------------
+
+-- Illegal instance declaration for
+--   ‘HasLens "foo" (Ph bs) (Ph bs') a b’
+--   The liberal coverage condition fails in class ‘HasLens’
+--     for functional dependency: ‘x s b -> t’
+--   Reason: lhs types ‘"foo"’, ‘Ph bs’, ‘b’
+--     do not jointly determine rhs type ‘Ph bs'’
+--   Un-determined variable: bs'
+data Ph (bs :: [Bool]) = Ph { foo :: Int }
+
+instance (a ~ Int, b ~ Int) => HasLens "foo" (Ph bs) (Ph bs') a b where
+    lensAt _ f (Ph i) = Ph <$> f i
+
+
+-- TFs
+--------------------
+
+-- Illegal instance declaration for
+--   ‘HasLens "foo" (Tf x) (Tf x') a b’
+--   The liberal coverage condition fails in class ‘HasLens’
+--     for functional dependency: ‘x s b -> t’
+--   Reason: lhs types ‘"foo"’, ‘Tf x’, ‘b’
+--     do not jointly determine rhs type ‘Tf x'’
+--   Un-determined variables: k', x'
+type family Goo (a :: k)
+data Tf (a :: k) = Tf { bar :: Goo a }
+
+instance (a ~ Goo x, b ~ Goo x') => HasLens "foo" (Tf (x :: k)) (Tf (x' :: k')) a b where
+    lensAt _ f (Tf x) = Tf <$> f x

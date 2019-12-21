@@ -1,8 +1,10 @@
 # `HasLens` done right
 
-**EDIT**: as [it turned out](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568217485) the solution presented here is worse than the already known functional dependencies solution, because the latter also has proper type inference, but is generally safer and simpler. This was pointed out in this [response](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568206301).
+**EDIT**: as [it turned out](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568217485) the solution presented has the same type inference capabilities as the functional dependencies one. This was pointed out in this [response](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568206301).
 
-So this post is more of an intro to the type-changing update problem space rather than something interesting in terms of original research.
+However the fundeps solution, as the type families one, can handle [neither phantoms types, nor type families](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568218989) unlike the `SameModulo` solution.
+
+I'll clean the post up once I'm less tired, but long story short: the novel solution presented here is more expressive than existing solutions.
 
 ## Preface
 
