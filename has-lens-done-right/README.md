@@ -2,7 +2,7 @@
 
 ## Preface
 
-The title is a bit clickbaity, I do not really know whether the solution presented in this post is "done right" or not. But so far it does seem to be better than widely known approaches. Jump straight to [Conclusions](https://github.com/effectfully/sketches/tree/master/has-lens-done-right#conclusions) if you're only interested in what makes the new approach better.
+The title is a bit clickbaity, I do not really know whether the solution presented in this post is "done right" or not. But so far it does seem to perform better than widely known approaches. Jump straight to [Conclusions](https://github.com/effectfully/sketches/tree/master/has-lens-done-right#conclusions) if you're only interested in what makes the new approach better. See also [this response](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568206301) for how they can achieve all the same benefits that the new machinery provides by implementing special rules regarding the `HasLens` class in the compiler. They've also got better type inference with one of the old approaches, but I currently do not undestand how they've managed to do that and whether their solution is sufficient.
 
 For general context, read the [`overloaded-record-fields`](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0023-overloaded-record-fields.rst) and (especially) [`record-set-field`](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0158-record-set-field.rst) proposals.
 
