@@ -33,7 +33,7 @@ type families:
 
 ## No polymorphism
 
-So one possible approach is to simply forbid polymorphism. That might be an acceptable thing for a library, but wiring such a machinery into the compiler is a non-solution. Anything that doesn't have a story for polymorphism, doesn't really make us any closer to solving the records problem, because polymorphism is a must as it's ubiquitous in Haskell code and the hard part of the records problem is how to handle polymorphism -- not how to define a bunch of trivial monomorphic type classes and wire them into the compiler, just because some people said they've been using this machinery in production (the public part of which is [pretty much irrelevant and the entire use case is not representative](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-542767516)) and refused to give examples upon a request ([because closed source](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-542822673)) (not to say that what they've been using in production is quite different to what was in the original proposal and even would break that production). And what kind of argument is that? "We've been using this in production". People use Go in production and many are quite happy with it, even though from a PLT perspective that language is a joke.
+So one possible approach is to simply forbid polymorphism. That might be an acceptable thing for a library, but wiring such a machinery into the compiler is a non-solution. Anything that doesn't have a story for polymorphism, doesn't really make us any closer to solving the records problem, because polymorphism is a must as it's ubiquitous in Haskell code and the hard part of the records problem is how to handle polymorphism -- not how to define a bunch of trivial monomorphic type classes and wire them into the compiler, just because some people said they've been using this machinery in production (the public part of which is [pretty much irrelevant and the entire use case is not representative](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-542767516)) and refused to give examples upon a request ([because closed source](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-542822673)). And what kind of argument is that? "We've been using this in production". People use Go in production and many are quite happy with it, even though from a PLT perspective that language is a joke.
 
 So the hard problem of handling polymorphism should drive the research, not [arguments](https://github.com/ghc-proposals/ghc-proposals/pull/158) like
 
@@ -67,9 +67,7 @@ data NamelessGod = NamelessGod
     }
 ```
 
-The reason why we're using monomorphic data is that the functional dependencies and the `SameModulo` approaches seem to work equally well for polymorphic data. I.e. even though the functional dependencies approach has its problems, the [`Control.Lens.Tuple`](https://hackage.haskell.org/package/lens-4.18.1/docs/Control-Lens-Tuple.html) use case seems to be a good fit for handling it with functional dependencies.
-
-I believe, the type families approach has troubles with polymorphic data w.r.t. type inference, but it's really such a bad approach that it has enough problems even without considering this particular edge case.
+The reason why we're using monomorphic data is that all the approaches seem to work equally well for polymorphic data. So even though the functional dependencies approach has its problems, the [`Control.Lens.Tuple`](https://hackage.haskell.org/package/lens-4.18.1/docs/Control-Lens-Tuple.html) use case seems to be a good fit for handling it with functional dependencies.
 
 Lens types (like `Lens`, `Lens'`, etc) and operators (like `(%~)`, `(.~)`, etc) are taken from the `microlens` package, i.e. they are fully compatible and interchangeable with the ones from `lens`.
 
@@ -157,13 +155,38 @@ Additionally, two machineries with weak type inference won't compose without exp
 
 See the [full code](src/FunDep).
 
-[Data.Generics.Product.Fields](https://hackage.haskell.org/package/generic-lens-1.2.0.1/docs/Data-Generics-Product-Fields.html#t:HasField)
+Note that [Data.Generics.Product.Fields](https://hackage.haskell.org/package/generic-lens-1.2.0.1/docs/Data-Generics-Product-Fields.html#t:HasField) does something different: it provides a single instance (modulo an additional instance that is irrelevant for this discussion) that looks like this:
 
 ```haskell
-(HasTotalFieldP field (Rep s) ~~ Just a, HasTotalFieldP field (Rep t) ~~ Just b, HasTotalFieldP field (Rep (Indexed s)) ~~ Just a', HasTotalFieldP field (Rep (Indexed t)) ~~ Just b', t ~~ Infer s a' b, s ~~ Infer t b' a, HasField0 field s t a b) => HasField field s t a b
+instance  -- see Note [Changing type parameters]
+  ( HasTotalFieldP field (Rep s) ~~ 'Just a
+  , HasTotalFieldP field (Rep t) ~~ 'Just b
+  , HasTotalFieldP field (Rep (Indexed s)) ~~ 'Just a'
+  , HasTotalFieldP field (Rep (Indexed t)) ~~ 'Just b'
+  , t ~~ Infer s a' b
+  , s ~~ Infer t b' a
+  , HasField0 field s t a b
+  ) => HasField field s t a b where
+  field f s = field0 @field f s
 ```
 
+where
+
+```haskell
+class HasField (field :: Symbol) s t a b | s field -> a, t field -> b, s field b -> t, t field a -> s where
+  field :: VL.Lens s t a b
+
+class HasField0 (field :: Symbol) s t a b where
+  field0 :: VL.Lens s t a b
+```
+
+The note that the instance refers to is [this one](https://github.com/kcsongor/generic-lens/blob/17e35a237bde0f9599578e62936426936c4dbfc5/src/Data/Generics/Internal/Families/Changing.hs#L25).
+
+The machinery looks clever, but I don't know how good it's in terms of type inference and whether it has any edge cases or clutters type signatures or has any other disadvantages.
+
 ## Type families
+
+The type families approach ([code taken](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#limited-type-changing-update) directly from GHC wiki) looks like this:
 
 ```haskell
 type family FldTy (r :: *) (n :: Symbol) :: *
@@ -185,6 +208,26 @@ lens = Lens.lens (getField pn) (setField pn) where
     pn = proxy#
 ```
 
+Here "the type at `n` in `r` is `a`" is implemented as the `FldTy` type family.
+
+`UpdTy r n a` reads as "replace the type at `n` in `r` with `a`".
+
+This type signature:
+
+```haskell
+    setField :: Proxy# n -> r -> t -> UpdTy r n t
+```
+
+reads as "replace the value at `n` in an `r` with a `t`", which of course implies that the type at `n` in `r` has to be replaced with `t`, because it might be a different type than the one that `r` holds at `n`. And if it's not a different type, then we have the `r ~ UpdTy r n (FldTy r n)` constraint, which automatically turns the type of `setField` into
+
+```haskell
+    setField :: Proxy# n -> r -> t -> r
+```
+
+in this case. Which is just a regular monomorphic setter.
+
+The `User` example looks like this:
+
 ```haskell
 type instance FldTy User "name" = String
 type instance UpdTy User "name" String = User
@@ -196,25 +239,45 @@ instance t ~ String => Upd User "name" t where
     setField _ (User email _) name = User email name
 ```
 
+and if we check how types get inferred:
+
 ```haskell
--- Found type wildcard ‘_’ standing for ‘([Char] -> [Char]) -> User’
 test0 :: _
 test0 f = User "john@gmail.com" "John" & lens @"name" %~ f
+```
 
--- Found type wildcard ‘_’ standing for ‘s0’
--- Where: ‘s0’ is an ambiguous type variable
+we'll see
+
+```
+    • Found type wildcard ‘_’ standing for ‘([Char] -> [Char]) -> User’
+```
+
+I.e. everything got inferred correctly. Yay!
+
+Unfortunately, types only get inferred in a bottom-up fashion. I.e. if the type of the record being updated is known, then the compiler will infer the type of the function used for updating the record. But if the type of the result is known as well as the type of the updating function, then the type of the record being updated won't be inferred. I.e.
+
+```haskell
 test1 :: _ -> User
 test1 user = user & lens @"name" .~ "new name"
 ```
 
+results in
 
+```
+    • Found type wildcard ‘_’ standing for ‘s0’
+      Where: ‘s0’ is an ambiguous type variable
+```
+
+We could probably make type inference top-down rather than bottom-up (i.e. make the former case break and the latter work), which I believe is a better practice, but in any case type inference is unidirectional with the type families approach, which is a limitation.
+
+Note also that if we wanted to encode the fancy apotheosis and user-killing examples from the previous section, we could also do that, e.g.
 
 ```haskell
-type instance FldTy User' "name" = String
-type instance UpdTy User' "name" String = User'
-type instance UpdTy User' "name" () = NamelessGod
+type instance FldTy User "name" = String
+type instance UpdTy User "name" String = User
+type instance UpdTy User "name" () = NamelessGod
 
-instance t ~ String => Has User' "name" t where
+instance t ~ String => Has User "name" t where
     getField _ (User _ name) = name
 
 instance Upd User "name" String where
@@ -224,24 +287,21 @@ instance Upd User "name" () where
     setField _ (User email _) () = NamelessGod email
 ```
 
-```haskell
--- Found type wildcard ‘_’
---   standing for ‘([Char] -> b0) -> UpdTy User' "name" b0’
--- Where: ‘b0’ is an ambiguous type variable
-test0' :: _
-test0' f = User' "john@gmail.com" "John" & lens @"name" %~ f
+The main problems of this approach are:
 
--- Found type wildcard ‘_’ standing for ‘NamelessGod’
-apotheosis :: _
-apotheosis = User' "john@gmail.com" "John" & lens @"name" .~ ()
-```
+- unidirectional type inference
+- [phantom types do not work](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-phantom-arguments)
+- [type families in certain cases do not work](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-type-families)
 
-##
+## [The multiple type-changing updates problem](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-multiple-fields)
 
-possible solution to the multiple type-changing updates problem:
+This limitation applies to all the approaches mentioned in this documented (including the `SameModulo` one). Possible ways to handle multiple type-changing updates are
 
-- [handle them explicitly](https://github.com/ghc-proposals/ghc-proposals/pull/6#discussion_r78147352)
-- [handle them via tuples](http://r6.ca/blog/20120623T104901Z.html)
+- [explicitly](https://github.com/ghc-proposals/ghc-proposals/pull/6#discussion_r78147352)
+- [via tuples](http://r6.ca/blog/20120623T104901Z.html)
+- [via linearization](https://raw.githubusercontent.com/ntc2/haskell-records/master/GHCWiki_SimpleOverloadedRecordFields.lhs)
+
+## Note about errors
 
 ## The `SameModulo` approach
 

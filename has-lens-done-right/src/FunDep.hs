@@ -26,12 +26,6 @@ import           Lens.Micro hiding (lens)
 class HasLens (x :: k) s t a b | x s -> a, x t -> b, x s b -> t, x t a -> s where
     lensAt :: Proxy# x -> Lens s t a b
 
-instance HasLens "_1" (a, b) (a', b) a a' where
-    lensAt _ = _1
-
-instance HasLens "_1" (a, b, c) (a', b, c) a a' where
-    lensAt _ = _1
-
 lens :: forall x s t a b. HasLens x s t a b => Lens s t a b
 lens = lensAt @x proxy#
 
@@ -87,3 +81,13 @@ type Deathnote = String -> Void
 
 write :: Deathnote -> User -> Void
 write kill user = user & lens @"name" %~ kill
+
+-- Tuple examples
+--------------------
+
+instance HasLens "_1" (a, b) (a', b) a a' where
+    lensAt _ = _1
+
+-- Found type wildcard ‘_’ standing for ‘((a, Char), Bool)’
+test2 :: forall a. (Enum a, Num a) => _
+test2 = ((0 :: a, 'a'), True) & lens @"_1" . lens @"_1" %~ succ

@@ -6,12 +6,14 @@
 {-# LANGUAGE MagicHash             #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 
 module TF where
 
+import           Data.Proxy   (Proxy (..))
 import           GHC.Exts     (Proxy#, proxy#)
 import           GHC.TypeLits (Symbol)
 import           Lens.Micro   hiding (lens)
@@ -108,3 +110,40 @@ test0' f = User' "john@gmail.com" "John" & lens @"name" %~ f
 -- Found type wildcard ‘_’ standing for ‘NamelessGod’
 apotheosis :: _
 apotheosis = User' "john@gmail.com" "John" & lens @"name" .~ ()
+
+-- Tuple examples
+--------------------
+
+type instance FldTy (a, b) "_1" = a
+type instance UpdTy (a, b) "_1" a' = (a', b)
+
+instance a ~ t => Has (a, b) "_1" t where
+    getField _ (a, b) = a
+
+instance Upd (a, b) "_1" t where
+    setField _ (_, y) x' = (x', y)
+
+-- Found type wildcard ‘_’ standing for ‘((a, Char), Bool)’
+test2 :: forall a. (Enum a, Num a) => _
+test2 = ((0 :: a, 'a'), True) & lens @"_1" . lens @"_1" %~ succ
+
+-- Poly-kinded update works
+--------------------
+
+data UserK (x :: k) = UserK
+    { nameK  :: String
+    , proxyK :: Proxy x
+    }
+
+type instance FldTy (UserK (x :: k)) "proxyK" = Proxy x
+type instance UpdTy (UserK (x :: k)) "proxyK" (Proxy (x' :: k')) = UserK x'
+
+instance t ~ Proxy x => Has (UserK (x :: k)) "proxyK" t where
+    getField _ (UserK _ proxy) = proxy
+
+instance t ~ Proxy (x' :: k') => Upd (UserK (x :: k)) "proxyK" t where
+    setField _ (UserK name _) proxy = UserK name proxy
+
+-- Found type wildcard ‘_’ standing for ‘(Proxy "text" -> Proxy x') -> UserK x'’
+test0K :: _
+test0K f = UserK "john@gmail.com" (Proxy @"text") & lens @"proxyK" %~ f
