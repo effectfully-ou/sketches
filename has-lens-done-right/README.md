@@ -2,7 +2,7 @@
 
 ## Preface
 
-The title is a bit clickbaity, I do not really know whether the solution presented in this post is "done right" or not. But so far it does seem to be better than widely known approaches.
+The title is a bit clickbaity, I do not really know whether the solution presented in this post is "done right" or not. But so far it does seem to be better than widely known approaches. Jump straight to [Conclusions](https://github.com/effectfully/sketches/tree/master/has-lens-done-right#conclusions) if you're only interested in what makes the new approach better.
 
 For general context, read the [`overloaded-record-fields`](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0023-overloaded-record-fields.rst) and (especially) [`record-set-field`](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0158-record-set-field.rst) proposals.
 
@@ -441,7 +441,11 @@ Note that we have poly-kinded update under a type family (`a :: k` to `a' :: k'`
 
 ## Conclusions
 
-The `SameModulo` approach seems to be less noisy than the type families approach while at the same time not having some of its drawbacks and providing better type inference than other approaches.
+So the `SameModulo` approach
+
+- compared to the monomorphic version: does the job
+- compared to the version with functional dependencies: type inference is not broken
+- compared to the version with type families: type inference is not half-broken, less noise, doesn't fall apart on phantom types and type families.
 
 I wonder if we could try to replace the clever `generic-lens` machinery with this approach and check whether there are any downsides. We'll also have to come up with a way to report nice error messages (which `generic-lens` currently does).
 
