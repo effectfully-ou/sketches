@@ -42,7 +42,7 @@ Polymorphic lenses + type families:
 
 - [another ORF page](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#record-field-constraints)
 - [a response to ORF](https://raw.githubusercontent.com/ntc2/haskell-records/master/GHCWiki_SimpleOverloadedRecordFields.lhs)
-- [`records-prototype`](https://github.com/adamgundry/records-prototype/blob/master/RecordsPrototype.hs).
+- [`records-prototype`](https://github.com/adamgundry/records-prototype/blob/master/RecordsPrototype.hs)
 
 The lists of links above do not meant to be exhaustive, they're just to give you an idea of how common each approach is and reference a few existing implementations.
 
