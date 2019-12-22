@@ -18,7 +18,7 @@ module Main where
 
 import           Data.Kind (Type)
 import           GHC.Prim
-import           Lens.Micro hiding (lens)
+import           Control.Lens hiding (lens)
 
 main :: IO ()
 main = mempty

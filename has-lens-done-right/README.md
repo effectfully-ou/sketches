@@ -2,9 +2,9 @@
 
 **EDIT**: as [it turned out](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568217485) the solution presented has the same type inference capabilities as the functional dependencies one. This was pointed out in this [response](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568206301).
 
-However the fundeps solution, as the type families one, can handle [neither phantoms types, nor type families](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568218989) unlike the `SameModulo` solution.
+However the fundeps solution, as the type families one, can directly handle [neither phantoms types, nor type families](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568218989) unlike the `SameModulo` solution. But it can handle them indirectly.
 
-I'll clean the post up once I'm less tired, but long story short: the novel solution presented here is more expressive than existing solutions.
+I'll clean the post up once I'm less tired (code already updated), but long story short: the novel solution presented here is kind of more expressive than existing solutions, but that additional expressiveness can be covered by introducing some indirections.
 
 ## Preface
 
