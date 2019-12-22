@@ -12,7 +12,6 @@
 {-# LANGUAGE TypeApplications        #-}
 {-# LANGUAGE TypeInType              #-}
 {-# LANGUAGE TypeFamilies            #-}
-{-# LANGUAGE UndecidableInstances    #-}
 
 module Main where
 

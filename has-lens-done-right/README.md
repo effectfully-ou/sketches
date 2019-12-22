@@ -451,5 +451,5 @@ Note that we have poly-kinded update under a type family (`a :: k` to `a' :: k'`
 So the `SameModulo` approach
 
 - compared to the monomorphic version: does the job
-- compared to the version with functional dependencies: more clutter and unsafety, doesn't fall apart on phantom types and type families.
-- compared to the version with type families: type inference is not half-broken, less noise, doesn't fall apart on phantom types and type families.
+- compared to the version with functional dependencies: a bit more noise, doesn't fall apart on direct phantom types and type families (both can be encoded with a small indirection with functional dependencies).
+- compared to the version with type families: type inference is not half-broken, less noise, doesn't fall apart on direct phantom types and type families (both can _probably_ be encoded with a small indirection with functional dependencies)..
