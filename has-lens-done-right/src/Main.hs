@@ -13,7 +13,6 @@
 {-# LANGUAGE TypeInType              #-}
 {-# LANGUAGE TypeFamilies            #-}
 {-# LANGUAGE UndecidableInstances    #-}
-{-# LANGUAGE UndecidableSuperClasses #-}
 
 module Main where
 
@@ -29,11 +28,11 @@ main = mempty
 
 type family Get (x :: k) s
 
-class SameModulo x t s => SameModulo (x :: k) s t where
-    lensAt :: (a ~ Get x s, b ~ Get x t) => Proxy# x -> Lens s t a b
+class SameModulo (x :: k) s t where
+    lensAt :: (SameModulo x t s, a ~ Get x s, b ~ Get x t) => Proxy# x -> Lens s t a b
 
-class (SameModulo x s t, a ~ Get x s, b ~ Get x t) => HasLens x s t a b
-instance (SameModulo x s t, a ~ Get x s, b ~ Get x t) => HasLens x s t a b
+class (SameModulo x s t, SameModulo x t s, a ~ Get x s, b ~ Get x t) => HasLens x s t a b
+instance (SameModulo x s t, SameModulo x t s, a ~ Get x s, b ~ Get x t) => HasLens x s t a b
 
 type HasLens' x s a = HasLens x s s a a
 
