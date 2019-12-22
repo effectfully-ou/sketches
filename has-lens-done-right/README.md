@@ -1,6 +1,8 @@
-# `HasLens` done right
+# Alternative `HasLens`
 
-**EDIT**: as [it turned out](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568217485) the solution presented here has the same type inference capabilities as the functional dependencies one. This was pointed out in this [response](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568206301).
+## **UPDATE**
+
+Originally this post was called "`HasLens` done right", however after [Oleg Grenrus](https://github.com/phadej) had [pointed out](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568206301) that the claim that the presented here solution gives rise to better type inference than already known solutions was wrong, I decided to tone down a bit.
 
 However the fundeps solution, as the type families one, can directly handle [neither phantoms types, nor type families](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568218989) unlike the `SameModulo` solution. But it can handle them indirectly.
 
@@ -8,9 +10,9 @@ I'll clean the post up once I'm less tired (code already updated), but long stor
 
 ## Preface
 
-The title is a bit clickbaity, I do not really know whether the solution presented in this post is "done right" or not. But so far it does seem to perform better than widely known approaches. Jump straight to [Conclusions](https://github.com/effectfully/sketches/tree/master/has-lens-done-right#conclusions) if you're only interested in what makes the new approach better. See also [this response](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568206301) for how they can achieve all the same benefits that the new machinery provides by implementing special rules regarding the `HasLens` class in the compiler. They've also got better type inference with one of the old approaches, but I currently do not undestand how they've managed to do that and whether their solution is sufficient.
+Jump straight to [Conclusions](https://github.com/effectfully/sketches/tree/master/has-lens-done-right#conclusions) if you're only interested in how the new approach compares to known ones.
 
-For general context, read the [`overloaded-record-fields`](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0023-overloaded-record-fields.rst) and (especially) [`record-set-field`](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0158-record-set-field.rst) proposals.
+For the general context, read the [`overloaded-record-fields`](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0023-overloaded-record-fields.rst) and (especially) [`record-set-field`](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0158-record-set-field.rst) proposals.
 
 This post first describes known approaches to constructing a `HasLens` class that allows to retrieve a `Lens` into a type (most commonly the lens is focused on a field of the type and is retrieved by the name of the field). Then I outline a new possible solution and show how examples that are troubling for other solutions can be handled with the new one.
 
@@ -61,13 +63,7 @@ So let's discuss all of these.
 
 ## No polymorphism
 
-One possible approach is to simply forbid polymorphism. That might be an acceptable thing for a library, but wiring such a machinery into the compiler is a non-solution. Anything that doesn't have a story for polymorphism, doesn't really make us any closer to solving the records problem, because polymorphism is a must as it's ubiquitous in Haskell code and the hard part of the records problem is how to handle polymorphism -- not how to define a bunch of trivial monomorphic type classes and wire them into the compiler, just because some people said they've been using this machinery in production (the public part of which is [pretty much irrelevant and the entire use case is not representative](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-542767516)).
-
-Hence the hard problem of handling polymorphism should drive the research, not [arguments](https://github.com/ghc-proposals/ghc-proposals/pull/158) like
-
-> Q: Should we allow type changing lenses? No - this results in additional implementation complexity. Let's aim to get something through, rather than nothing, and a future dedicated soul can extend it.
-
-that pretend there is a clear way to extend the monomorphic approach, which is not the case. "Extending" the monomorphic approach would very likely change the whole thing entirely, so I don't see any reason to commit to that approach in the first place and I'm very disappointed by the fact that the committee approved the monomorphic solution, even though not only does it forbid polymorphism, but also [doesn't support a bunch of nice use cases](https://github.com/ghc-proposals/ghc-proposals/pull/158) and [falls apart on a single `Maybe`](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-567766069).
+One possible approach is to simply forbid polymorphism. That might be an acceptable thing for a library, but wiring such a machinery into the compiler is a non-solution, because polymorphism is a must as it's ubiquitous in Haskell code. However the naive monomorphic solution can be directly extended with functional dependencies to a sensible polymorphic solution, so it's not the end of the world, if the monomorphic solution gets implemented first. I don't see any reason to start with it, though, instead of doing the right thing straight away, especially when the monomorphic solution [doesn't support a bunch of nice use cases](https://github.com/ghc-proposals/ghc-proposals/pull/158) and [falls apart on a single `Maybe`](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-567766069).
 
 One additional argument that I want to address here, because it keeps popping up despite being completely invalid is [this one](https://github.com/ghc-proposals/ghc-proposals/pull/282#issuecomment-541447553):
 
@@ -77,8 +73,6 @@ I responded with
 
 > 1. This is not a valid question to ask as the current record update syntax is nearly useless and is not used as often as it could be. This proposal aims at improving the situation and so it can't refer back to the nearly useless solution taking a particular instance of that uselessness as evidence of a certain feature not being commonly used
 > 2. Having said that, I'll answer your question: I use the record update syntax only for defining lenses manually (which admittedly doesn't happen too often, but it's a valid use case) and that requires type-changing update for polymorphic records
-
-So let me repeat: anything that doesn't have a story for polymorphism, doesn't really make us any closer to solving the records problem.
 
 ## Testing example
 
@@ -95,7 +89,7 @@ data NamelessGod = NamelessGod
     }
 ```
 
-The reason why we're using monomorphic data is that all the approaches seem to work equally well for polymorphic data. So even though the functional dependencies approach has its problems, the [`Control.Lens.Tuple`](https://hackage.haskell.org/package/lens-4.18.1/docs/Control-Lens-Tuple.html) use case seems to be a good fit for handling it with functional dependencies.
+The reason why we're using monomorphic data is that all the approaches seem to work equally well for polymorphic data.
 
 Lens types (like `Lens`, `Lens'`, etc) and operators (like `(%~)`, `(.~)`, etc) are taken from the `microlens` package, i.e. they are fully compatible and interchangeable with the ones from `lens`.
 
@@ -123,7 +117,7 @@ instance HasLens "name" User User String String where
     lensAt _ f (User email name) = User email <$> f name
 ```
 
-But the major problem of this representation is that it breaks type inference (but see the **EDIT** in the beginning of the file). Consider this example:
+But the major problem of this instance is that it breaks type inference. Consider this example:
 
 ```haskell
 test = User "john@gmail.com" "John" & lens @"name" %~ _
@@ -142,16 +136,7 @@ while what we'd like to see is
     • Found hole: _ :: String -> String
 ```
 
-So GHC can't resolve `b1` as `String`. Why is that? Because it doesn't have to be `String`! The comments in
-
-```
-            , x s b -> t  -- if you replace the type at `x` in `s` with `b`, you'll get `t`
-            , x t a -> s  -- if you replace the type at `x` in `t` with `a`, you'll get `s`
-```
-
-are not accurate and describe what we'd like to get, but what we actually have is merely that `x`, `s` and `b` together determine `t`, which means that `s` and `t` do not have to be the same type modulo `x`, they can be completely different types and the semantics of a `HasLens` instance can be anything in this case.
-
-For example we can define this instance:
+So GHC can't resolve `b1` as `String`. Why is that? Because it doesn't have to be `String`! For example we can additionally define this instance:
 
 ```haskell
 instance HasLens "name" User NamelessGod String () where
@@ -177,9 +162,28 @@ writeIn :: DeathNote -> User -> Void
 writeIn kill user = user & lens @"name" %~ kill
 ```
 
-This use cases are rather weird and we have to pay by having broken type inference in order to support them. The bad thing here is that with the functional dependencies approach there is no way to define an instance without supporting this use case, i.e. type inference is broken generally for all monomorphic data types. This is a huge price to pay: broken type inference doesn't mean that you won't be able to leave top-level definitions without type signatures as you shouldn't do that anyway -- the problem is that you'll occasionally get weird errors about ambiguous types at the call site. Finding what causes such errors is rather annoying, especially when you wrote something that does make perfect sense and you do not think of your code as being type ambiguous.
+This use cases are rather weird and we have to pay by having broken type inference in order to support them. This is a huge price to pay: broken type inference doesn't mean that you won't be able to leave top-level definitions without type signatures as you shouldn't do that anyway -- the problem is that you'll occasionally get weird errors about ambiguous types at the call site. Finding what causes such errors is rather annoying, especially when you wrote something that does make perfect sense and you do not think of your code as being type ambiguous.
 
 Additionally, two machineries with weak type inference won't compose without explicit types sprinkled over the code. Anything that goes into the compiler had better be as inference-friendly as possible as that allows libraries to cut some corners when they need that and make not very inference-friendly APIs.
+
+However we can rule out such use cases and provide a single `HasLens "name"` instance for `User` (see the "Structure of LabelOptic instances" section in [Optics.Label](https://hackage.haskell.org/package/optics-core-0.2/docs/Optics-Label.html) for details):
+
+```haskell
+instance (a ~ String, b ~ String) => HasLens "name" User User a b where
+    lensAt _ f (User email name) = User email <$> f name
+```
+
+then type inference works properly:
+
+```haskell
+-- Found type wildcard ‘_’ standing for ‘([Char] -> [Char]) -> User’
+test0 :: _
+test0 f = User "john@gmail.com" "John" & lens @"name" %~ f
+
+-- Found type wildcard ‘_’ standing for ‘User’
+test1 :: _ -> User
+test1 user = user & lens @"name" .~ "new name"
+```
 
 Note that [Data.Generics.Product.Fields](https://hackage.haskell.org/package/generic-lens-1.2.0.1/docs/Data-Generics-Product-Fields.html#t:HasField) does something different: it provides a single instance (modulo an additional instance that is irrelevant for this discussion) that looks like this:
 
