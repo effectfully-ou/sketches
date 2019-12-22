@@ -322,8 +322,8 @@ See more examples in [`records-prototype`](https://github.com/adamgundry/records
 The main problems of this approach are:
 
 - unidirectional type inference
-- [phantom types do not work](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-phantom-arguments)
-- [type families in certain cases do not work](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-type-families)
+- [phantom types do not work directly](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-phantom-arguments)
+- [type families in certain cases do not work directly](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-type-families)
 
 ## [The multiple type-changing updates problem](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-multiple-fields)
 
@@ -348,25 +348,23 @@ Here is the core of the novel `SameModulo` approach:
 ```haskell
 type family Get (x :: k) s
 
-class SameModulo x t s => SameModulo (x :: k) s t where
-    lensAt :: (a ~ Get x s, b ~ Get x t) => Proxy# x -> Lens s t a b
+class SameModulo (x :: k) s t where
+    lensAt :: (SameModulo x t s, a ~ Get x s, b ~ Get x t) => Proxy# x -> Lens s t a b
 ```
 
 We have the `Get` type family that allows to get the type of the `x` field in `s` just like in the type families approach and we have the `SameModulo` class that allows to retrieve a lens focused on the `x` field of `s`, whose type is naturally `Get x s`, which we abbreviate as `a`.
 
-Whenever `SameModulo x s t` holds, `SameModulo x t s` must also hold as the `SameModulo x t s => ...` constraint indicates. I.e. `SameModulo x` is a symmetric relation by definition.
-
 `SameModulo` is an internal type class and we need some convenient user-facing API. There are choices, but here is the simplest one:
 
 ```haskell
-class (SameModulo x s t, a ~ Get x s, b ~ Get x t) => HasLens x s t a b
-instance (SameModulo x s t, a ~ Get x s, b ~ Get x t) => HasLens x s t a b
+class (SameModulo x s t, SameModulo x t s, a ~ Get x s, b ~ Get x t) => HasLens x s t a b
+instance (SameModulo x s t, SameModulo x t s, a ~ Get x s, b ~ Get x t) => HasLens x s t a b
 
 lens :: forall x s t a b. HasLens x s t a b => Lens s t a b
 lens = lensAt @x proxy#
 ```
 
-`HasLens x s t a b` is pretty much a class alias for `SameModulo x s t`, except the `a` and `b` variables are explicit in the former. This makes type signatures nicer and I personally ([not only](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449422693)) find [error messages](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449419429) more to the point.
+`HasLens x s t a b` is pretty much a product of `SameModulo x s t` and `SameModulo x t s`, except the `a` and `b` variables are explicit in the former. This makes type signatures nicer and I personally ([not only](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449422693)) find [error messages](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449419429) more to the point.
 
 ### The `User` example
 
@@ -455,5 +453,5 @@ Note that we have poly-kinded update under a type family (`a :: k` to `a' :: k'`
 So the `SameModulo` approach
 
 - compared to the monomorphic version: does the job
-- compared to the version with functional dependencies: a bit more noise, doesn't fall apart on direct phantom types and type families (both can be encoded with a small indirection with functional dependencies).
-- compared to the version with type families: type inference is not half-broken, less noise, doesn't fall apart on direct phantom types and type families (both can _probably_ be encoded with a small indirection with functional dependencies)..
+- compared to the version with functional dependencies: less straightforward, doesn't fall apart on direct phantom types and type families (both can be encoded with a small indirection with functional dependencies).
+- compared to the version with type families: type inference is not half-broken, less noise, doesn't fall apart on direct phantom types and type families (both can _probably_ be encoded with a small indirection with functional dependencies).
