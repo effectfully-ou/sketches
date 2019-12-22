@@ -4,17 +4,15 @@
 
 Originally this post was called "`HasLens` done right", however after [Oleg Grenrus](https://github.com/phadej) had [pointed out](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568206301) that the claim that the presented here solution gives rise to better type inference than already known solutions was wrong, I decided to tone down a bit.
 
-However the fundeps solution, as the type families one, can directly handle [neither phantoms types, nor type families](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568218989) unlike the `SameModulo` solution. But it can handle them indirectly.
-
-I'll clean the post up once I'm less tired (code already updated), but long story short: the novel solution presented here is kind of more expressive than existing solutions, but that additional expressiveness can be covered by introducing some indirections.
-
-## Preface
+The solution presented here allows to directly handle more types than known solutions, however the latter can handle such types indirectly and the difference to the end user is negligible.
 
 Jump straight to [Conclusions](https://github.com/effectfully/sketches/tree/master/has-lens-done-right#conclusions) if you're only interested in how the new approach compares to known ones.
 
+## Preface
+
 For the general context, read the [`overloaded-record-fields`](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0023-overloaded-record-fields.rst) and (especially) [`record-set-field`](https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0158-record-set-field.rst) proposals.
 
-This post first describes known approaches to constructing a `HasLens` class that allows to retrieve a `Lens` into a type (most commonly the lens is focused on a field of the type and is retrieved by the name of the field). Then I outline a new possible solution and show how examples that are troubling for other solutions can be handled with the new one.
+This post first describes known approaches to constructing a `HasLens` class that allows to retrieve a `Lens` into a type (most commonly the lens is focused on a field of the type and is retrieved by the name of the field). Then I outline a new possible solution and show how examples that are not convenient to handle with other solutions can be handled directly with the new one.
 
 This post builds on the ideas from one of my previous posts: [`poly-traversable`](https://github.com/effectfully/sketches/tree/master/poly-traversable) where I suggested that the technique developed there can be used for solving the records problem. Reading that post is not a prerequisite though as this writing is self-contained and I improved the technique after Adam Gundry [pointed out](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-542589304) that the previous machinery didn't allow for poly-kinded update.
 
@@ -91,7 +89,7 @@ data NamelessGod = NamelessGod
 
 The reason why we're using monomorphic data is that all the approaches seem to work equally well for polymorphic data.
 
-Lens types (like `Lens`, `Lens'`, etc) and operators (like `(%~)`, `(.~)`, etc) are taken from the `microlens` package, i.e. they are fully compatible and interchangeable with the ones from `lens`.
+Lens types (like `Lens`, `Lens'`, etc) and operators (like `(%~)`, `(.~)`, etc) are taken from the `lens` package.
 
 ## Functional dependencies ([full code](src/FunDep.hs))
 
@@ -173,7 +171,7 @@ instance (a ~ String, b ~ String) => HasLens "name" User User a b where
     lensAt _ f (User email name) = User email <$> f name
 ```
 
-then type inference works properly:
+Then type inference works properly:
 
 ```haskell
 -- Found type wildcard ‘_’ standing for ‘([Char] -> [Char]) -> User’
@@ -213,6 +211,89 @@ class HasField0 (field :: Symbol) s t a b where
 The note that the instance refers to is [this one](https://github.com/kcsongor/generic-lens/blob/17e35a237bde0f9599578e62936426936c4dbfc5/src/Data/Generics/Internal/Families/Changing.hs#L25).
 
 The machinery looks clever, but I don't know how good it's in terms of type inference and whether it has any edge cases or clutters type signatures or has any other disadvantages.
+
+### [The phantom arguments problem](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-phantom-arguments)
+
+Consider a phantom data type like this one:
+
+```haskell
+data Ph (a :: k) (bs :: [Bool]) = Ph { foo :: Int }
+```
+
+If we try to define a `HasLens` instance for directly
+
+```haskell
+instance (a ~ Int, b ~ Int) => HasLens "foo" (Ph (x :: k) bs) (Ph (x' :: k') bs') a b where
+    lensAt _ f (Ph i) = Ph <$> f i
+```
+
+we'll see this error:
+
+```
+Illegal instance declaration for
+  ‘HasLens "foo" (Ph x bs) (Ph x' bs') a b’
+  The liberal coverage condition fails in class ‘HasLens’
+    for functional dependency: ‘x s b -> t’
+  Reason: lhs types ‘"foo"’, ‘Ph x bs’, ‘b’
+    do not jointly determine rhs type ‘Ph x' bs'’
+  Un-determined variables: k', x', bs'
+```
+
+The workaround is to use `Tagged` to bind all undetermined variables to make them determined:
+
+```haskell
+instance (a ~ Tagged ('(,) x bs) Int, b ~ Tagged ('(,) x' bs') Int) =>
+            HasLens "foo" (Ph (x :: k) bs) (Ph (x' :: k') bs') a b where
+    lensAt _ f (Ph i) = Ph . unTagged <$> f (Tagged i)
+```
+
+Then we can construct a convenient `Lens` by stripping the `Tagged` wrapper off using `coerced`:
+
+```haskell
+ph :: Lens (Ph (a :: k) bs) (Ph (a' :: k') bs') Int Int
+ph = lens @"foo" . coerced
+```
+
+It would be better if we could handle phantoms directly, but it's not the end of the world to use `coerced` for this use case.
+
+### [The type families problem](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-type-families)
+
+Same applies to type families. Trying to directly handle
+
+```haskell
+type family Goo (x :: k)
+data Tf (x :: k) = Tf { bar :: Goo x }
+```
+
+with
+
+```haskell
+instance (a ~ Goo x, b ~ Goo x') => HasLens "bar" (Tf (x :: k)) (Tf (x' :: k')) a b where
+    lensAt _ f (Tf x) = Tf <$> f x
+```
+
+results in
+
+```
+Illegal instance declaration for
+  ‘HasLens "foo" (Tf x) (Tf x') a b’
+  The liberal coverage condition fails in class ‘HasLens’
+    for functional dependency: ‘x s b -> t’
+  Reason: lhs types ‘"bar"’, ‘Tf x’, ‘b’
+    do not jointly determine rhs type ‘Tf x'’
+  Un-determined variables: k', x'
+```
+
+but `Tagged` saves us again:
+
+```haskell
+instance (a ~ Tagged x (Goo x), b ~ Tagged x' (Goo x')) =>
+            HasLens "bar" (Tf (x :: k)) (Tf (x' :: k')) a b where
+    lensAt _ f (Tf x) = Tf . unTagged <$> f (Tagged x)
+
+tf :: Lens (Tf (a :: k)) (Tf (a' :: k')) (Goo a) (Goo a')
+tf = lens @"bar" . coerced
+```
 
 ## Type families ([full code](src/TF.hs))
 
@@ -325,6 +406,8 @@ The main problems of this approach are:
 - [phantom types do not work directly](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-phantom-arguments)
 - [type families in certain cases do not work directly](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-type-families)
 
+But I expect that the same workaround with `Tagged` should apply here as well.
+
 ## [The multiple type-changing updates problem](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-multiple-fields)
 
 This limitation applies to all the approaches mentioned in this documented (including the `SameModulo` one). Possible ways to handle multiple type-changing updates are
@@ -417,7 +500,7 @@ poly
 poly = lens @"_1" . lens @"_1"
 ```
 
-### [The phantom arguments problem](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-phantom-arguments) is solved:
+### [The phantom arguments problem](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-phantom-arguments) is solved
 
 ```haskell
 data Ph (a :: k) (bs :: [Bool]) = Ph { foo :: Int }
@@ -430,9 +513,7 @@ ph :: Lens (Ph (a :: k) bs) (Ph (a' :: k') bs') Int Int
 ph = lens @"foo"
 ```
 
-Note that we have poly-kinded update (`a :: k` to `a' :: k'`).
-
-### [The type families problem](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-type-families) is solved:
+### [The type families problem](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-type-families) is solved
 
 ```haskell
 type family Goo (a :: k)
@@ -446,12 +527,10 @@ tf :: Lens (Tf (a :: k)) (Tf (a' :: k')) (Goo a) (Goo a')
 tf = lens @"bar"
 ```
 
-Note that we have poly-kinded update under a type family (`a :: k` to `a' :: k'`).
-
 ## Conclusions
 
 So the `SameModulo` approach
 
 - compared to the monomorphic version: does the job
-- compared to the version with functional dependencies: less straightforward, doesn't fall apart on direct phantom types and type families (both can be encoded with a small indirection with functional dependencies).
-- compared to the version with type families: type inference is not half-broken, less noise, doesn't fall apart on direct phantom types and type families (both can _probably_ be encoded with a small indirection with functional dependencies).
+- compared to the version with functional dependencies: less straightforward, doesn't fall apart on direct phantom types and type families (both can be encoded with a small indirection with the functional dependencies approach).
+- compared to the version with type families: type inference is not half-broken, less noise, doesn't fall apart on direct phantom types and type families (both can _probably_ be encoded with a small indirection with the type families approach).

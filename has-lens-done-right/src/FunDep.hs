@@ -142,7 +142,7 @@ data Tf (x :: k) = Tf { bar :: Goo x }
 --   ‘HasLens "foo" (Tf x) (Tf x') a b’
 --   The liberal coverage condition fails in class ‘HasLens’
 --     for functional dependency: ‘x s b -> t’
---   Reason: lhs types ‘"foo"’, ‘Tf x’, ‘b’
+--   Reason: lhs types ‘"bar"’, ‘Tf x’, ‘b’
 --     do not jointly determine rhs type ‘Tf x'’
 --   Un-determined variables: k', x'
 --
