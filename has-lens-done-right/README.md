@@ -220,7 +220,7 @@ Consider a phantom data type like this one:
 data Ph (a :: k) (bs :: [Bool]) = Ph { foo :: Int }
 ```
 
-If we try to define a `HasLens` instance for directly
+If we try to define a `HasLens` instance for it directly
 
 ```haskell
 instance (a ~ Int, b ~ Int) => HasLens "foo" (Ph (x :: k) bs) (Ph (x' :: k') bs') a b where
@@ -254,7 +254,7 @@ ph :: Lens (Ph (a :: k) bs) (Ph (a' :: k') bs') Int Int
 ph = lens @"foo" . coerced
 ```
 
-It would be better if we could handle phantoms directly, but it's not the end of the world to use `coerced` for this use case.
+It would be better if we could handle phantoms directly, but it's not the end of the world to use `coerced` to support this use case.
 
 ### [The type families problem](https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/design#type-changing-update-type-families)
 
@@ -447,7 +447,7 @@ lens :: forall x s t a b. HasLens x s t a b => Lens s t a b
 lens = lensAt @x proxy#
 ```
 
-`HasLens x s t a b` is pretty much a product of `SameModulo x s t` and `SameModulo x t s`, except the `a` and `b` variables are explicit in the former. This makes type signatures nicer and I personally ([not only](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449422693)) find [error messages](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449419429) more to the point.
+`HasLens x s t a b` is pretty much a product of `SameModulo x s t` and `SameModulo x t s` (which is what makes inference bidirectional), except the `a` and `b` variables are explicit in the former. This makes type signatures nicer and I personally ([not only](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449422693)) find [error messages](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-449419429) more to the point.
 
 ### The `User` example
 
