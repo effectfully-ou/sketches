@@ -1,0 +1,282 @@
+# `unordered-effects`
+
+This post shows a technique that allows to encode unordered things at the type-level. We'll use algebraic effects as an example as it's a common use case that requires some notion of unorderness.
+
+Algebraic effects libraries commonly provide a `Member` type class that allows to write things like
+
+```haskell
+a :: (Error Char `Member` effs, Env Bool `Member` effs) => Eff effs Int
+```
+
+However once you instantiate `effs` to a particular list of effects, going back from
+
+```haskell
+a' :: Eff '[Error Char, Env Bool] Int
+```
+
+to the original `a` requires traversing `Eff` (which is usually some kind of free, freer, freerish, etc monad).
+
+Here we'll describe an encoding with _intrinsically unordered_ effects. I.e. reordering a particular list of effects is a no-op, as well as embedding it into a superlist.
+
+We'll be using the following example throughout the post:
+
+```haskell
+a1 :: Monad m => EffT '[Either Char , Reader Bool] m Int
+a2 :: Monad m => EffT '[Reader Bool , Either Char] m Int
+a3 :: Monad m => EffT '[State String, Reader Bool] m Int
+
+a123 :: Monad m => EffT '[Either Char, Reader Bool, State String] m Int
+a123 = do
+    x1 <- embed a1
+    x2 <- embed a2
+    x3 <- embed a3
+    return $ x1 + x2 + x3
+```
+
+Here `a1`, `a2` and `a3` are some computations that all run with distinct / distinctly ordered effects and `a123` embeds all of `a*` into a single row of effects using the `embed` function, which, as promised, is a no-op:
+
+```haskell
+embed :: effs1 `In` effs2 => EffT effs1 m a -> EffT effs2 m a
+embed (EffT k) = EffT k
+```
+
+(`EffT` is a `newtype` wrapper).
+
+## Core
+
+Since we're encoding regular algebraic effects, they're going to be functors (we'll also consider higher-order effects and functors later):
+
+```haskell
+type Effect = * -> *
+```
+
+As is common, effects will be packed in an n-ary sum type, but we take an abstract approach here and instead of hardcoding any particular open sum type, use prisms over an abstract `f`:
+
+```
+class Call f (eff :: Effect) where
+    _Call :: Prism' (f a) (eff a)
+```
+
+This translates to
+
+- `_Call # eff` lifts an `eff a` into an `f a`
+- `a ^? _Call` unlifts an `f a` down to `Maybe (eff a)`
+
+Having this in place, we can define a "signature":
+
+```haskell
+type family All (f :: k -> Constraint) (xs :: [k]) :: Constraint where
+    All _ '[]       = ()
+    All f (x ': xs) = (f x, All f xs)
+
+class All (Call f) effs => Sig f effs
+instance All (Call f) effs => Sig f effs
+```
+
+which reads as "every `eff` from `effs` is in the sum type `f`". I.e. `f` is the sum of all `effs`, e.g. if our effect are `Reader Bool`, `State String` and `Either Char`, then their sum is
+
+```haskell
+data TestF b
+    = TestReader (Reader Bool   b)
+    | TestState  (State  String b)
+    | TestEither (Either Char   b)
+```
+
+Note however that the `All (Call f) effs` constraint only says that every `eff` is in `f`, but it doesn't say that `f` consists only of the effects from `effs`: `f` might have some additional irrelevant effects.
+
+Here is how we define the type of a computation that performs a single effect from a particular list of effects:
+
+```haskell
+comp :: forall f. Sig f effs => f b
+```
+
+Next we define the type of functions that allow to interpret an effectful computation in a monad:
+
+```haskell
+type Lifter effs m = forall b. (forall f. Sig f effs => f b) -> m b
+```
+
+This is the most important part of the encoding. A `Lifter effs m` receives a computation that returns a `b` and can perform _a single effect_ from `effs` (and only from `effs`, which we ensure by being parametric over `f`). `Lifter` generalizes all of these functions:
+
+```haskell
+liftEither :: Either e a -> M a
+liftReader :: Reader r a -> M a
+liftState  :: State  s a -> M a
+```
+
+(where `M` is some particular monad that we can interpret all the effects in) and many more. I.e. you can turn a
+
+```haskell
+Lifter '[Either e, Reader r, State s] m
+```
+
+into any of the functions from the above. For example having
+
+```haskell
+lifter :: Lifter '[Either Char, Reader Bool, State String] M
+```
+
+we can define this function:
+
+```haskell
+liftR :: Reader Bool a -> M a
+liftR eff = lifter $ _Call # eff
+```
+
+and a similar one for each of the other effects.
+
+Note also that the `M` doesn't have to be a particular monad, we can generalize all of those:
+
+```haskell
+liftEither :: MonadError  e m => Either e a -> m a
+liftReader :: MonadReader r m => Reader r a -> m a
+liftState  :: MonadState  s m => State  s a -> m a
+```
+
+i.e. interpret the effects using the classes provided by `mtl`. `Lifter` (and the entire encoding) doesn't impose any particular effect system as a target to compile to, but we'll be using `mtl` for examples as it's a lingua franca of effect systems and it's easy to target it.
+
+Our algebraic effects transformer is this:
+
+```haskell
+newtype EffT effs m a = EffT
+    { unEff :: Lifter effs m -> m a
+    }
+```
+
+I.e. it's the same thing as `ReaderT (Lifter effs m) m` (modulo the fact that that would require `ImpredicativePolymorphism`).
+
+The definition of `EffT` reads as "compute a value in the `m` monad, given a function that interprets all the effects from `effs` in that monad". Here is a contrived example of how we can construct such an effectful computation manually:
+
+```haskell
+comp :: Monad m => EffT '[Either Char, Reader Bool] m Int
+comp = EffT $ \lifter -> do
+    b <- lifter $ _Call # (ask :: Reader Bool Bool)
+    if b
+        then return 0
+        else lifter $ _Call # Left 'a'
+```
+
+Here we lift the `Reader Bool` and `Either Char` effects into the mothership monad `m`, which is completely abstract. Any `m` is suitable as long as you can provide a function that interprets both the effects in it. We had to specify the type of `ask`, but worry not, type inference problems will be addressed as well.
+
+Of course binding `lifter` and using prismatic thingies manually is tedious, so let's abstract those implementation details out.
+
+## Membership
+
+```haskell
+
+class (forall f. Sig f effs => Call f eff) => eff `Member` effs
+instance (forall f. Sig f effs => Call f eff) => eff `Member` effs
+
+send :: eff `Member` effs => eff a -> EffT effs m a
+send a = EffT $ \h -> h $ _Call # a
+
+class (forall f. Sig f effs2 => Sig f effs1) => effs1 `In` effs2
+instance (forall f. Sig f effs2 => Sig f effs1) => effs1 `In` effs2
+
+embed :: effs1 `In` effs2 => EffT effs1 m a -> EffT effs2 m a
+embed (EffT k) = EffT k
+```
+
+## Entailments
+
+```haskell
+-- inMember :: '[eff] `In` effs => Proxy ('(,) eff effs) -> (eff `Member` effs => c) -> c
+-- inMember _ = id
+
+memberIn :: eff `Member` effs => Proxy ('(,) eff effs) -> ('[eff] `In` effs => c) -> c
+memberIn _ = id
+
+class All (Flip Member effs2) effs1 => effs1 `Members` effs2
+instance All (Flip Member effs2) effs1 => effs1 `Members` effs2
+
+membersIn2 :: '[eff1, eff2] `Members` effs => Proxy ('(,,) eff1 eff2 effs) -> ('[eff1, eff2] `In` effs => c) -> c
+membersIn2 _ = id
+
+-- membersIn :: effs1 `Members` effs1 => Proxy ('(,) effs1 effs2) -> (effs1 `In` effs2 => c) -> c
+-- membersIn _ = id
+```
+
+## Improving type inference
+
+```haskell
+type family UnifyArgs (args :: k) :: Constraint where
+    UnifyArgs '()                    = ()
+    UnifyArgs ('(,) ('(,) x y) args) = (x ~ y, UnifyArgs args)
+
+type family Unify (args :: m) (x :: k) (y :: l) :: Constraint where
+    Unify args (f x) (g y) = Unify ('(,) ('(,) x y) args) f g
+    Unify args x     x     = UnifyArgs args
+    Unify args _     _     = ()
+
+type family Find x xs :: Constraint where
+    Find x '[]       = ()
+    Find x (y ': xs) = (Unify '() x y, Find x xs)
+```
+
+```haskell
+send :: (Find eff effs, eff `Member` effs) => eff a -> EffT effs m a
+send a = EffT $ \h -> h $ _Call # a
+```
+
+## `local`
+
+## Example
+
+```haskell
+a1 :: Monad m => EffT '[Either Char, Reader Bool] m Int
+a1 = do
+    b <- send ask
+    if b
+        then return 0
+        else send $ Left 'a'
+
+a2 :: EffT '[Reader Bool, Either Char] m Int
+a2 = send $ Right 1
+
+a3 :: Monad m => EffT '[State String, Reader Bool] m Int
+a3 = do
+    send $ modify (++ "text")
+    length <$> send get
+
+a123 :: Monad m => EffT '[Either Char, Reader Bool, State String] m Int
+a123 = do
+    x1 <- embed a1
+    x2 <- embed a2
+    x3 <- embed a3
+    return $ x1 + x2 + x3
+```
+
+
+
+```haskell
+data TestF b
+    = TestReader (Reader Bool   b)
+    | TestState  (State  String b)
+    | TestEither (Either Char   b)
+
+instance Call TestF (Reader Bool) where
+    _Call = prism' TestReader $ \case
+        TestReader b -> Just b
+        _            -> Nothing
+
+instance Call TestF (State String) where
+    _Call = prism' TestState $ \case
+        TestState b -> Just b
+        _           -> Nothing
+
+instance Call TestF (Either Char) where
+    _Call = prism' TestEither $ \case
+        TestEither b -> Just b
+        _            -> Nothing
+```
+
+```haskell
+runExample
+    :: m ~ ReaderT Bool (StateT String (Either Char))
+    => EffT '[Either Char, Reader Bool, State String] m Int
+    -> m Int
+runExample (EffT k) = k $ \case
+    TestReader b -> hoist generalize b
+    TestState  b -> lift $ hoist generalize b
+    TestEither b -> lift $ lift b
+```
