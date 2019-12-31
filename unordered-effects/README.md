@@ -52,7 +52,7 @@ type Effect = * -> *
 
 As is common, effects will be packed in an n-ary sum type, but we take an abstract approach here and instead of hardcoding any particular open sum type, use prisms over an abstract `f`:
 
-```
+```haskell
 class Call f (eff :: Effect) where
     _Call :: Prism' (f a) (eff a)
 ```
@@ -83,6 +83,26 @@ data TestF b
 ```
 
 Note however that the `All (Call f) effs` constraint only says that every `eff` is in `f`, but it doesn't say that `f` consists only of the effects from `effs`: `f` might have some additional irrelevant effects.
+
+As an example
+
+```haskell
+Sig f '[Reader Bool, State String, Either Char]
+```
+
+is the constraint as
+
+```haskell
+(Call f (Reader Bool), Call f (State String), Call f (Either Char))
+```
+
+which is the same constraint as
+
+```haskell
+(Call f (Either Char), Call f (Reader Bool), Call f (State String))
+```
+
+or any other permutation of the subconstraints. This is how we achieve unorderness.
 
 Here is how we define the type of a computation that performs a single effect from a particular list of effects:
 
@@ -160,40 +180,103 @@ Here we lift the `Reader Bool` and `Either Char` effects into the mothership mon
 
 Of course binding `lifter` and using prismatic thingies manually is tedious, so let's abstract those implementation details out.
 
-## Membership
+## Membership and inclusion
+
+The membership relation is defined as
 
 ```haskell
-
 class (forall f. Sig f effs => Call f eff) => eff `Member` effs
 instance (forall f. Sig f effs => Call f eff) => eff `Member` effs
+```
 
+That is, as long as for any `f` `Sig f effs` implies `Call f eff`, we can be confident that `eff` is in `effs`. We use the [`QuantifiedConstraints`](https://gitlab.haskell.org/ghc/ghc/wikis/quantified-constraints) language extension here.
+
+Using this type class we can abstract the details of the encoding out:
+
+```haskell
 send :: eff `Member` effs => eff a -> EffT effs m a
-send a = EffT $ \h -> h $ _Call # a
+send a = EffT $ \lifter -> lifter $ _Call # a
+```
 
+Now the example from the above becomes:
+
+```haskell
+comp :: Monad m => EffT '[Either Char, Reader Bool] m Int
+comp = do
+    b <- send (ask :: Reader Bool Bool)
+    if b
+        then return 0
+        else send $ Left 'a'
+```
+
+which is a bit nicer.
+
+Similarly, the inclusion relation is
+
+```haskell
 class (forall f. Sig f effs2 => Sig f effs1) => effs1 `In` effs2
 instance (forall f. Sig f effs2 => Sig f effs1) => effs1 `In` effs2
+```
 
+And as mentioned above, `embed` is
+
+```haskell
 embed :: effs1 `In` effs2 => EffT effs1 m a -> EffT effs2 m a
 embed (EffT k) = EffT k
 ```
 
-## Entailments
+There is a downside to this encoding, though: we'd like ``'[eff] `In` effs`` to imply ``eff `Member` effs``, but this is not the case as
 
 ```haskell
--- inMember :: '[eff] `In` effs => Proxy ('(,) eff effs) -> (eff `Member` effs => c) -> c
--- inMember _ = id
+inMember :: '[eff] `In` effs => Proxy ('(,) eff effs) -> (eff `Member` effs => c) -> c
+inMember _ = id
+```
 
+gives
+
+```
+    • Could not deduce (Call f eff)
+      from the context: In '[eff] effs
+```
+
+At least it works the other way around:
+
+```haskell
 memberIn :: eff `Member` effs => Proxy ('(,) eff effs) -> ('[eff] `In` effs => c) -> c
 memberIn _ = id
+```
 
+And we can cover the first use case by introducing a separate type class:
+
+```haskell
 class All (Flip Member effs2) effs1 => effs1 `Members` effs2
 instance All (Flip Member effs2) effs1 => effs1 `Members` effs2
+```
 
-membersIn2 :: '[eff1, eff2] `Members` effs => Proxy ('(,,) eff1 eff2 effs) -> ('[eff1, eff2] `In` effs => c) -> c
+Then entailments work both the ways:
+
+```haskell
+membersMember2
+    :: '[eff1, eff2] `Members` effs
+    => Proxy ('(,,) eff1 eff2 effs) -> ((eff1 `Member` effs, eff2 `Member` effs) => c) -> c
+membersMember2 _ = id
+
+memberMembers2
+    :: (eff1 `Member` effs, eff2 `Member` effs)
+    => Proxy ('(,,) eff1 eff2 effs) -> ('[eff1, eff2] `Members` effs => c) -> c
+memberMembers2 _ = id
+```
+
+and we can go from `Members` to `In` for a list of effects with statically known length:
+
+```haskell
+membersIn2
+    :: '[eff1, eff2] `Members` effs
+    => Proxy ('(,,) eff1 eff2 effs) -> ('[eff1, eff2] `In` effs => c) -> c
 membersIn2 _ = id
+```
 
--- membersIn :: effs1 `Members` effs1 => Proxy ('(,) effs1 effs2) -> (effs1 `In` effs2 => c) -> c
--- membersIn _ = id
+So as always there are trade-offs involved, but there might be a more convenient encoding, I haven't really investigated this.
 ```
 
 ## Improving type inference

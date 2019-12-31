@@ -87,6 +87,7 @@ embed (EffT k) = EffT k
 
 -- Entailments
 
+-- -- Doesn't work.
 -- inMember :: '[eff] `In` effs => Proxy ('(,) eff effs) -> (eff `Member` effs => c) -> c
 -- inMember _ = id
 
@@ -96,9 +97,22 @@ memberIn _ = id
 class All (Flip Member effs2) effs1 => effs1 `Members` effs2
 instance All (Flip Member effs2) effs1 => effs1 `Members` effs2
 
-membersIn2 :: '[eff1, eff2] `Members` effs => Proxy ('(,,) eff1 eff2 effs) -> ('[eff1, eff2] `In` effs => c) -> c
+membersMember2
+    :: '[eff1, eff2] `Members` effs
+    => Proxy ('(,,) eff1 eff2 effs) -> ((eff1 `Member` effs, eff2 `Member` effs) => c) -> c
+membersMember2 _ = id
+
+memberMembers2
+    :: (eff1 `Member` effs, eff2 `Member` effs)
+    => Proxy ('(,,) eff1 eff2 effs) -> ('[eff1, eff2] `Members` effs => c) -> c
+memberMembers2 _ = id
+
+membersIn2
+    :: '[eff1, eff2] `Members` effs
+    => Proxy ('(,,) eff1 eff2 effs) -> ('[eff1, eff2] `In` effs => c) -> c
 membersIn2 _ = id
 
+-- -- Doesn't work.
 -- membersIn :: effs1 `Members` effs1 => Proxy ('(,) effs1 effs2) -> (effs1 `In` effs2 => c) -> c
 -- membersIn _ = id
 
