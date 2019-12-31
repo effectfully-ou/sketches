@@ -277,7 +277,6 @@ membersIn2 _ = id
 ```
 
 So as always there are trade-offs involved, but there might be a more convenient encoding, I haven't really investigated this.
-```
 
 ## Improving type inference
 
