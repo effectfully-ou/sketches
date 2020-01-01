@@ -127,7 +127,7 @@ type family Unify (args :: m) (x :: k) (y :: l) :: Constraint where
     Unify args x     x     = UnifyArgs args
     Unify args _     _     = ()
 
-type family Find x xs :: Constraint where
+type family Find (x :: k) (xs :: [k]) :: Constraint where
     Find x '[]       = ()
     Find x (y ': xs) = (Unify '() x y, Find x xs)
 

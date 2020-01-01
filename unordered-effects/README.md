@@ -276,9 +276,42 @@ membersIn2
 membersIn2 _ = id
 ```
 
-So as always there are trade-offs involved, but there might be a more convenient encoding, I haven't really investigated this.
+So as always there are trade-offs involved, but there also might exist a more convenient encoding, I haven't really investigated this.
 
 ## Improving type inference
+
+Consider the following snippet:
+
+```haskell
+comp :: EffT '[Reader Bool, Either Char] m String
+comp = send $ Right "abc"
+```
+
+It doesn't type check:
+
+```haskell
+    • Could not deduce (Call f (Either a0))
+        arising from a use of ‘send’
+```
+
+The thing here is that at the call site the type of `Right 1` is underspecified: it's `Either a0 String` for some unspecified `a0`. We know the `a0` is supposed to be `Char`, because we have only one `Either` effect in the row of effects, but we haven't communicated that reasoning to the compiler. So let's do that.
+
+The idea is the following: we try to unify an `eff` effect with each of the effects from an `effs` row of effects by checking for equality the head of `eff` (the head of `f x y z` is `f`) and the head of each of the effects from `eff`. Once a matching head is found, we add constraints unifying the arguments (that the heads are applied to) element-wise.
+
+In the example above this becomes
+
+```
+Find (Either a0) '[Reader Bool, Either Char]                       ~>  -- [1]
+(Unify (Either a0) (Reader Bool), Unify (Either a0) (Either Char)) ~>  -- [2]
+Unify (Either a0) (Either Char)                                    ~>  -- [3]
+a0 ~ Char
+```
+
+- [1] simply unfolds the definition of `Find`
+- [2] discards the first constraint, because the head of `Either a0` (`Either`) doesn't unify with the head of `Reader Bool` (`Reader`)
+- [3] checks that the heads match and adds a constraint unifying `a0` with `Char`
+
+The full code look like that:
 
 ```haskell
 type family UnifyArgs (args :: k) :: Constraint where
@@ -290,15 +323,23 @@ type family Unify (args :: m) (x :: k) (y :: l) :: Constraint where
     Unify args x     x     = UnifyArgs args
     Unify args _     _     = ()
 
-type family Find x xs :: Constraint where
+type family Find (x :: k) (xs :: [k]) :: Constraint where
     Find x '[]       = ()
     Find x (y ': xs) = (Unify '() x y, Find x xs)
 ```
 
+- `Find` calls `Unify` for each element of the list
+- `Unify` collects arguments in a deeply nested tuple and once heads match, calls `UnifyArgs`
+- `UnifyArgs` turns collected arguments into constraints
+
+The definition of `send` with better inference is this then:
+
 ```haskell
-send :: (Find eff effs, eff `Member` effs) => eff a -> EffT effs m a
-send a = EffT $ \h -> h $ _Call # a
+sendFind :: (Find eff effs, eff `Member` effs) => eff a -> EffT effs m a
+sendFind = send
 ```
+
+I.e. we only add the `Find eff effs` constraint. This makes the example from the above type check.
 
 ## `local`
 
