@@ -22,6 +22,7 @@
 module Main where
 
 import           Control.Lens
+import           Control.Monad
 import qualified Control.Monad.Except as Mtl
 import           Control.Monad.Morph  hiding (embed)
 import qualified Control.Monad.Reader as Mtl
@@ -136,27 +137,29 @@ sendFind = send
 
 -- `local`
 
-mapEff
-    :: forall eff effs m a. (Monad m, eff `Member` effs)
-    => (forall a. eff a -> eff a) -> EffT effs m a -> EffT effs m a
+mapEff :: eff `Member` effs => (forall a. eff a -> eff a) -> EffT effs m a -> EffT effs m a
 mapEff f (EffT k) = EffT $ \h -> k $ \b -> h $ \p -> b p & _Call %~ f
 
-local :: (Monad m, Reader r `Member` effs) => (r -> r) -> EffT effs m a -> EffT effs m a
+local :: Reader r `Member` effs => (r -> r) -> EffT effs m a -> EffT effs m a
 local f = mapEff @(Reader _) $ Mtl.local f
 
 -- Hard
+
+-- _Call :: ASetter (f a) (f a) (eff a) (eff a)
+-- ASetter (f a) (f (m a)) (eff a) (m a)
+
+-- join $ h $ \(p :: Proxy f) -> b p & _ %~ \eff -> unEffT (f eff) h
 
 interpose
     :: forall eff effs m a. (Monad m, eff `Member` effs)
     => (forall a. eff a -> EffT effs m a) -> EffT effs m a -> EffT effs m a
 interpose f (EffT k) =
-    EffT $ \h -> k $ \b -> do
-        getY <- h $ \p ->
+    EffT $ \h -> k $ \b ->
+        join $ h $ \p ->
             let bp = b p in
                 case bp ^? _Call @_ @eff of
                     Nothing  -> pure <$> bp
                     Just eff -> unEffT (f eff) h <$ bp
-        getY
 
 -- General handling.
 

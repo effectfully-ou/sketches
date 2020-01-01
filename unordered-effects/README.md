@@ -311,7 +311,7 @@ a0 ~ Char
 - [2] discards the first constraint, because the head of `Either a0` (`Either`) doesn't unify with the head of `Reader Bool` (`Reader`)
 - [3] checks that the heads match and adds a constraint unifying `a0` with `Char`
 
-The full code look like that:
+The full code looks like that:
 
 ```haskell
 type family UnifyArgs (args :: k) :: Constraint where
@@ -332,7 +332,7 @@ type family Find (x :: k) (xs :: [k]) :: Constraint where
 - `Unify` collects arguments in a deeply nested tuple and once heads match, calls `UnifyArgs`
 - `UnifyArgs` turns collected arguments into constraints
 
-The definition of `send` with better inference is this then:
+The definition of `send` with better type inference is this then:
 
 ```haskell
 sendFind :: (Find eff effs, eff `Member` effs) => eff a -> EffT effs m a
@@ -341,7 +341,32 @@ sendFind = send
 
 I.e. we only add the `Find eff effs` constraint. This makes the example from the above type check.
 
-## `local`
+## A higher-order effectful function: `local`
+
+The good thing about this encoding is that you can always fall back to `transformers` or `mtl`. For example we can define a `MonadReader` instance for `EffT` as follows:
+
+```haskell
+instance Mtl.MonadReader r m => Mtl.MonadReader r (EffT effs m) where
+    ask = lift Mtl.ask
+    local f (EffT k) = EffT $ \b -> Mtl.local f $ k b
+```
+
+The instance just delegates to the `MonadReader` instance of the underlying `m` monad.
+
+And you can stack `ContT` or whatever fancy transformer on top of `m` or constrain `m` with `MonadCont` and that will still allow you to use unordered effects and interpret them in `m`. So the encoding does not restrict you to use only first-order effects: you can also use higher-order effects perfectly well -- just not in the first-order part of the encoding.
+
+As with other effect systems (see e.g. [`Control.Monad.Freer.Reader.local`](https://hackage.haskell.org/package/freer-simple-1.2.1.1/docs/Control-Monad-Freer-Reader.html#v:local) or [`Control.Eff.Reader.Lazy.local`](https://hackage.haskell.org/package/extensible-effects-5.0.0.1/docs/Control-Eff-Reader-Lazy.html)) we can define higher-order effectful functions (as opposed to higher-order effects whose interpretation is not hardcoded). For example having
+
+```haskell
+mapEff :: eff `Member` effs => (forall a. eff a -> eff a) -> EffT effs m a -> EffT effs m a
+```
+
+which applies a function to a certain effect from the row of effects, we can define
+
+```haskell
+local :: Reader r `Member` effs => (r -> r) -> EffT effs m a -> EffT effs m a
+local f = mapEff @(Reader _) $ Mtl.local f
+```
 
 ## Example
 
