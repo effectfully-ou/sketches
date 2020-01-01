@@ -145,11 +145,6 @@ local f = mapEff @(Reader _) $ Mtl.local f
 
 -- Hard
 
--- _Call :: ASetter (f a) (f a) (eff a) (eff a)
--- ASetter (f a) (f (m a)) (eff a) (m a)
-
--- join $ h $ \(p :: Proxy f) -> b p & _ %~ \eff -> unEffT (f eff) h
-
 interpose
     :: forall eff effs m a. (Monad m, eff `Member` effs)
     => (forall a. eff a -> EffT effs m a) -> EffT effs m a -> EffT effs m a

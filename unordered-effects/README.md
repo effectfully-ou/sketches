@@ -370,21 +370,23 @@ local f = mapEff @(Reader _) $ Mtl.local f
 
 ## Example
 
+Here is our aforementioned contrived example in its full:
+
 ```haskell
 a1 :: Monad m => EffT '[Either Char, Reader Bool] m Int
-a1 = do
-    b <- send ask
+a1 = local not $ do
+    b <- sendFind ask
     if b
         then return 0
         else send $ Left 'a'
 
 a2 :: EffT '[Reader Bool, Either Char] m Int
-a2 = send $ Right 1
+a2 = sendFind $ Right 1
 
 a3 :: Monad m => EffT '[State String, Reader Bool] m Int
 a3 = do
-    send $ modify (++ "text")
-    length <$> send get
+    sendFind $ modify (++ "text")
+    length <$> sendFind get
 
 a123 :: Monad m => EffT '[Either Char, Reader Bool, State String] m Int
 a123 = do
@@ -394,14 +396,18 @@ a123 = do
     return $ x1 + x2 + x3
 ```
 
-
+In this section we'll interpret the example using a particular data type. This one:
 
 ```haskell
 data TestF b
     = TestReader (Reader Bool   b)
     | TestState  (State  String b)
     | TestEither (Either Char   b)
+```
 
+It's the sum of all the effects of `a123`. We need to provide the `Call` instances:
+
+```haskell
 instance Call TestF (Reader Bool) where
     _Call = prism' TestReader $ \case
         TestReader b -> Just b
@@ -418,6 +424,8 @@ instance Call TestF (Either Char) where
         _            -> Nothing
 ```
 
+and once that is done, writing an interpreter is easy:
+
 ```haskell
 runExample
     :: m ~ ReaderT Bool (StateT String (Either Char))
@@ -428,3 +436,23 @@ runExample (EffT k) = k $ \case
     TestState  b -> lift $ hoist generalize b
     TestEither b -> lift $ lift b
 ```
+
+Here we inject each of the effects into the `ReaderT Bool (StateT String (Either Char))` monad (using the `transformers` and [`mmorph`](http://hackage.haskell.org/package/mmorph-1.1.3/docs/Control-Monad-Morph.html) packages).
+
+A couple of tests
+
+```haskell
+-- Left 'a'
+test1' :: Either Char Int
+test1' = evalStateT (runReaderT (runExample a123) True) ""
+
+-- Right 5
+test2' :: Either Char Int
+test2' = evalStateT (runReaderT (runExample a123) False) ""
+```
+
+evaluate correctly.
+
+Of course constructing sums of effects and then injecting effects into them manually is very tedious. Hence the next section.
+
+## `fastsum` + `mtl`
