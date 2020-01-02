@@ -260,22 +260,3 @@ test2 = runReaderT (evalStateT (runEffT a123) "") False
 
 main :: IO ()
 main = traverse_ print [test1', test2', test1, test2]
-
-
-
-data M (a :: *) :: *
-
-lifter :: Lifter '[Either Char, Reader Bool, State String] M
-lifter _ = undefined
-
-liftR :: Reader Bool a -> M a
-liftR eff = lifter $ \_ -> _Call # eff
-
-
-
-a1' :: Monad m => EffT '[Either Char, Reader Bool] m Int
-a1' = EffT $ \lifter -> do
-    b <- lifter $ \_ -> _Call # (ask :: Reader Bool Bool)
-    if b
-        then return 0
-        else lifter $ \_ -> _Call # Left 'a'
