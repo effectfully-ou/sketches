@@ -116,6 +116,8 @@ Next we define the type of functions that allow to interpret an effectful comput
 type Lifter effs m = forall b. (forall f. Sig f effs => f b) -> m b
 ```
 
+(in the actual code we also have an irrelevant `Proxy` that helps to define complex operations, I'm omitting it in the README)
+
 This is the most important part of the encoding. A `Lifter effs m` receives a computation that returns a `b` and can perform _a single effect_ from `effs` (and only from `effs`, which we ensure by being parametric over `f`). `Lifter` generalizes all of these functions:
 
 ```haskell
@@ -456,3 +458,51 @@ evaluate correctly.
 Of course constructing sums of effects and then injecting effects into them manually is very tedious. Hence the next section.
 
 ## `fastsum` + `mtl`
+
+We need a class for interpreting an effect in a monad
+
+```haskell
+class InterpretIn m eff where
+    interpret :: eff a -> m a
+```
+
+relevant instances
+
+```haskell
+instance Mtl.MonadReader r m => InterpretIn m (Reader r) where
+    interpret a = runReader a <$> Mtl.ask
+
+instance Mtl.MonadError e m => InterpretIn m (Either e) where
+    interpret = Mtl.liftEither
+
+instance Mtl.MonadState s m => InterpretIn m (State s) where
+    interpret a = do
+        s <- Mtl.get
+        let (x, s') = runState a s
+        Mtl.put s'
+        return x
+```
+
+and an open sum type (we use the one from the [`fastsum`](https://hackage.haskell.org/package/fastsum-0.1.1.1) package, because it's fast and provides just the right API):
+
+```haskell
+instance eff :< effs => Call (Sum effs) eff where
+    _Call = prism' inject project
+```
+
+(`Sum`, `(:<)`, `inject` and `project` come from the `fastsum` package)
+
+Having these things in place, defining the main function is simple:
+
+```haskell
+runEffT
+    :: forall effs m a. (Apply (InterpretIn m) effs, Sig (Sum effs) effs)
+    => EffT effs m a -> m a
+runEffT (EffT k) = k $ apply @(InterpretIn m) @effs interpret
+```
+
+(`Apply` and `apply` come from the `fastsum` package)
+
+So we just instantiate the lifter with a function that interprets each effect from the sum of effects using the `interpret` function from the `InterpretIn` class.
+
+The `Sig (Sum effs) effs` constraint must always be satisfied for any particular `effs`. It says that each effect from `effs` is in the n-ary sum of `effs`, which has to be true. We could even discharge such a constraint using some type-level [hasochism](http://homepages.inf.ed.ac.uk/slindley/papers/hasochism.pdf), but I'd rather not.

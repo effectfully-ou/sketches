@@ -158,8 +158,8 @@ interpose f (EffT k) =
 
 -- General handling.
 
-class InterpretIn m f where
-    interpret :: f a -> m a
+class InterpretIn m eff where
+    interpret :: eff a -> m a
 
 instance Mtl.MonadReader r m => InterpretIn m (Reader r) where
     interpret a = runReader a <$> Mtl.ask
@@ -178,7 +178,7 @@ instance eff :< effs => Call (Sum effs) eff where
     _Call = prism' inject project
 
 runEffT
-    :: forall m effs a. (Apply (InterpretIn m) effs, Sig (Sum effs) effs)
+    :: forall effs m a. (Apply (InterpretIn m) effs, Sig (Sum effs) effs)
     => EffT effs m a -> m a
 runEffT (EffT k) = k $ \b -> apply @(InterpretIn m) @effs interpret $ b Proxy
 
