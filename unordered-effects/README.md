@@ -42,7 +42,7 @@ embed (EffT k) = EffT k
 
 (`EffT` is a `newtype` wrapper).
 
-## Core ([full code](src/Main.hs)
+## Core ([full code](src/Main.hs))
 
 Since we're encoding regular algebraic effects, they're going to be functors (we'll also consider higher-order effects and functors later):
 
