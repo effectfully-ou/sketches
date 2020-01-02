@@ -572,4 +572,6 @@ Unfortunately, there is no higher-order version of `fastsum`, so in [the code](s
 
 ## Conclusions
 
-It's more of an exploratory post, so I don't really have any conclusions.
+It's more of an exploratory post, so I don't really have any conclusions other than "it's nice to be unordered".
+
+The full code for the main first-order version is [here](src/Main.hs).
