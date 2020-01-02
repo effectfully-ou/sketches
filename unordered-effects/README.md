@@ -343,6 +343,8 @@ sendFind = send
 
 I.e. we only add the `Find eff effs` constraint. This makes the example from the above type check.
 
+Note however that if you have two effects with the same head (which is allowed), `sendFind` won't help, you'll have to specify manually which one of the effects you want.
+
 ## A higher-order effectful function: `local`
 
 The good thing about this encoding is that you can always fall back to `transformers` or `mtl`. For example we can define a `MonadReader` instance for `EffT` as follows:
@@ -506,3 +508,62 @@ runEffT (EffT k) = k $ apply @(InterpretIn m) @effs interpret
 So we just instantiate the lifter with a function that interprets each effect from the sum of effects using the `interpret` function from the `InterpretIn` class.
 
 The `Sig (Sum effs) effs` constraint must always be satisfied for any particular `effs`. It says that each effect from `effs` is in the n-ary sum of `effs`, which has to be true. We could even discharge such a constraint using some type-level [hasochism](http://homepages.inf.ed.ac.uk/slindley/papers/hasochism.pdf), but I'd rather not.
+
+## Higher-order effects ([full code](src/HO.hs))
+
+Is it possible to tweak the system to allow [higher-order effects](https://github.com/fused-effects/fused-effects#higher-order-effects)? Yep, we only need to go from functors to higher-order functors as [they do](http://hackage.haskell.org/package/fused-effects-1.0.0.0/docs/Control-Effect-Class.html#t:HFunctor) in the `fused-effects` library.
+
+Here is an example:
+
+```haskell
+newtype HO eff m a = HO
+    { unHO :: eff a
+    }
+
+data Local r m a = Local
+    { _localFun :: r -> r
+    , _localArg :: m a
+    }
+
+a1 :: Monad m => EffT '[HO (Either Char), HO (Reader Bool), Local Bool] m Int
+a1 = send $ Local not $ do
+    b <- send @(HO (Reader Bool)) $ HO ask
+    if b
+        then return 0
+        else send $ HO $ Left 'a'
+```
+
+- `HO` turns a first-order effect into a higher-order one by ignoring the higher-order part (`m`)
+- `Local` represents the `local` function that we considered above, only now it's an actual abstract effect that you need to interpret
+- `a1` is an effectful computation that has the `Local` effect
+
+Note that we `send` something that already has a couple of `send`s in it. Does that mean that `EffT` is now recursive? Yes. Does that mean that in order to embed a computation into a bigger row of effects we have to traverse it recursively? Nope! It's still
+
+```haskell
+embed :: effs1 `In` effs2 => EffT effs1 m a -> EffT effs2 m a
+embed (EffT k) = EffT k
+```
+
+despite `EffT` being recursive. This is because instead of requiring the inner row of effects to be the same as the outer one (which would force us to traverse `EffT` recursively), we only require the inner one to be included in the outer one:
+
+```haskell
+type Lifter effs m
+    =  forall effs' b
+    .  effs' `In` effs
+    => Proxy effs'
+    -> (forall h. Sig h effs' => h (EffT effs' m) b)
+    -> m b
+
+newtype EffT effs m a = EffT
+    { unEff :: Lifter effs m -> m a
+	}
+```
+
+and
+
+```
+effs' `In` effs1  -- comes from `Lifter`
+effs1 `In` effs2  -- comes from `embed`
+```
+
+together imply ``effs' `in` effs2``, so no recursion is needed.
