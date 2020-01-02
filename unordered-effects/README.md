@@ -42,7 +42,7 @@ embed (EffT k) = EffT k
 
 (`EffT` is a `newtype` wrapper).
 
-## Core
+## Core ([full code](src/Main.hs)
 
 Since we're encoding regular algebraic effects, they're going to be functors (we'll also consider higher-order effects and functors later):
 
@@ -73,7 +73,7 @@ class All (Call f) effs => Sig f effs
 instance All (Call f) effs => Sig f effs
 ```
 
-which reads as "every `eff` from `effs` is in the sum type `f`". I.e. `f` is the sum of all `effs`, e.g. if our effect are `Reader Bool`, `State String` and `Either Char`, then their sum is
+which reads as "every `eff` from `effs` is in the sum type `f`". I.e. `f` is the sum of all `effs`, e.g. if our effects are `Reader Bool`, `State String` and `Either Char`, then their sum is
 
 ```haskell
 data TestF b
@@ -90,7 +90,7 @@ As an example
 Sig f '[Reader Bool, State String, Either Char]
 ```
 
-is the constraint as
+is the same constraint as
 
 ```haskell
 (Call f (Reader Bool), Call f (State String), Call f (Either Char))
@@ -331,7 +331,7 @@ type family Find (x :: k) (xs :: [k]) :: Constraint where
 ```
 
 - `Find` calls `Unify` for each element of the list
-- `Unify` collects arguments in a deeply nested tuple and once heads match, calls `UnifyArgs`
+- `Unify` collects arguments in a deeply nested tuple and once the heads match, calls `UnifyArgs`
 - `UnifyArgs` turns collected arguments into constraints
 
 The definition of `send` with better type inference is this then:
@@ -556,7 +556,7 @@ type Lifter effs m
 
 newtype EffT effs m a = EffT
     { unEff :: Lifter effs m -> m a
-	}
+    }
 ```
 
 and
@@ -567,3 +567,9 @@ effs1 `In` effs2  -- comes from `embed`
 ```
 
 together imply ``effs' `in` effs2``, so no recursion is needed.
+
+Unfortunately, there is no higher-order version of `fastsum`, so in [the code](src/HO.hs) we only have an example with a hardcoded n-ary sum functor.
+
+## Conclusions
+
+It's more of an exploratory post, so I don't really have any conclusions.
