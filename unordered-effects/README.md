@@ -610,7 +610,7 @@ or this one:
 ```haskell
 interpret
     :: Monad m
-	=> (forall a. eff a -> EffT effs m a) -> EffT (eff ': effs) m a -> EffT effs m a
+    => (forall a. eff a -> EffT effs m a) -> EffT (eff ': effs) m a -> EffT effs m a
 ```
 
 This is because it is incredibly hard to do so. It took me a couple of hours to define the former and after several hours of struggle I'm still not able to define the latter, because dealing with ordered things when your internals are unordered is even harder than dealing with unordered things when your internals are ordered.
