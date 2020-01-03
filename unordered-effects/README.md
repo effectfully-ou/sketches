@@ -608,12 +608,16 @@ interpose
 or this one:
 
 ```haskell
-interpret :: (forall a. eff a -> EffT effs m a) -> EffT (eff ': effs) m a -> EffT effs m a
+interpret
+    :: Monad m
+	=> (forall a. eff a -> EffT effs m a) -> EffT (eff ': effs) m a -> EffT effs m a
 ```
 
 This is because it is incredibly hard to do so. It took me a couple of hours to define the former and after several hours of struggle I'm still not able to define the latter, because dealing with ordered things when your internals are unordered is even harder than dealing with unordered things when your internals are ordered.
 
 So what is presented here is not a proper effect system. It might become one some day, but currently it's just a layer that allows to get unorderness.
+
+## Conclusions
 
 The post is more of an exploratory kind. We've explored a bit the unorderness concept, but there's much more to it.
 
