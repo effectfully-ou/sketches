@@ -152,7 +152,7 @@ interpose f (EffT k) =
     EffT $ \h -> k $ \b ->
         join $ h $ \p ->
             let bp = b p in
-                case bp ^? _Call @_ @eff of
+                case bp ^? _Call of
                     Nothing  -> pure <$> bp
                     Just eff -> unEffT (f eff) h <$ bp
 

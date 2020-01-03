@@ -191,7 +191,7 @@ class (forall f. Sig f effs => Call f eff) => eff `Member` effs
 instance (forall f. Sig f effs => Call f eff) => eff `Member` effs
 ```
 
-That is, as long as for any `f` `Sig f effs` implies `Call f eff`, we can be confident that `eff` is in `effs`. We use the [`QuantifiedConstraints`](https://gitlab.haskell.org/ghc/ghc/wikis/quantified-constraints) language extension here.
+That is, as long as for any `f` `Sig f effs` implies `Call f eff`, we can be confident that `eff` is in `effs`. We use the [`QuantifiedConstraints`](https://gitlab.haskell.org/ghc/ghc/wikis/quantified-constraints) language extension here. Note how we essentially encode an n-ary sum constraint as a function from an n-ary product constraint!
 
 Using this type class we can abstract the details of the encoding out:
 
@@ -509,6 +509,31 @@ So we just instantiate the lifter with a function that interprets each effect fr
 
 The `Sig (Sum effs) effs` constraint must always be satisfied for any particular `effs`. It says that each effect from `effs` is in the n-ary sum of `effs`, which has to be true. We could even discharge such a constraint using some type-level [hasochism](http://homepages.inf.ed.ac.uk/slindley/papers/hasochism.pdf), but I'd rather not.
 
+## Alternative representation
+
+We can define `Lifter` as
+
+```haskell
+type Lifter effs m = forall eff b. eff `Member` effs => eff b -> m b
+```
+
+and still make everything work, because `Member` remains the same "unordered" thing:
+
+```haskell
+class (forall f. Sig f effs => Call f eff) => eff `Member` effs
+instance (forall f. Sig f effs => Call f eff) => eff `Member` effs
+```
+
+This definition of `Lifter` reads much better and it's a bit more convenient to work with, but I find it harder to reason about the quantified constraint and predict how constraints in various situations will resolve.
+
+There might be a better way to express an n-ary sum in terms of an n-ary product than
+
+```haskell
+forall f. Sig f effs => Call f eff
+```
+
+More thinking is required.
+
 ## Higher-order effects ([full code](src/HO.hs))
 
 Is it possible to tweak the system to allow [higher-order effects](https://github.com/fused-effects/fused-effects#higher-order-effects)? Yep, we only need to go from functors to higher-order functors as [they do](http://hackage.haskell.org/package/fused-effects-1.0.0.0/docs/Control-Effect-Class.html#t:HFunctor) in the `fused-effects` library.
@@ -570,8 +595,26 @@ together imply ``effs' `in` effs2``, so no recursion is needed.
 
 Unfortunately, there is no higher-order version of `fastsum`, so in [the code](src/HO.hs) we only have an example with a hardcoded n-ary sum functor.
 
-## Conclusions
+## Trouble in paradise
 
-It's more of an exploratory post, so I don't really have any conclusions other than "it's nice to be unordered".
+As you probably already realized, I'm not defining any common algebraic effects functions in this post. Like this one:
+
+```haskell
+interpose
+    :: (Monad m, eff `Member` effs)
+    => (forall a. eff a -> EffT effs m a) -> EffT effs m a -> EffT effs m a
+```
+
+or this one:
+
+```haskell
+interpret :: (forall a. eff a -> EffT effs m a) -> EffT (eff ': effs) m a -> EffT effs m a
+```
+
+This is because it is incredibly hard to do so. It took me a couple of hours to define the former and after several hours of struggle I'm still not able to define the latter, because dealing with ordered things when your internals are unordered is even harder than dealing with unordered things when your internals are ordered.
+
+So what is presented here is not a proper effect system. It might become one some day, but currently it's just a layer that allows to get unorderness.
+
+The post is more of an exploratory kind. We've explored a bit the unorderness concept, but there's much more to it.
 
 See the full code of the main first-order version [here](src/Main.hs).
