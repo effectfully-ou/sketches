@@ -532,6 +532,18 @@ There might be a better way to express an n-ary sum in terms of an n-ary product
 forall f. Sig f effs => Call f eff
 ```
 
+For example,
+
+```haskell
+class (forall constr. All constr effs => constr eff) => eff `Member` effs
+instance (forall constr. All constr effs => constr eff) => eff `Member` effs
+
+class (forall eff. eff `Member` effs1 => eff `Member` effs2) => effs1 `In` effs2
+instance (forall eff. eff `Member` effs1 => eff `Member` effs2) => effs1 `In` effs2
+```
+
+also seems to work and has some better behavior.
+
 More thinking is required.
 
 ## Higher-order effects ([full code](src/HO.hs))
@@ -594,6 +606,8 @@ effs1 `In` effs2  -- comes from `embed`
 together imply ``effs' `in` effs2``, so no recursion is needed.
 
 Unfortunately, there is no higher-order version of `fastsum`, so in [the code](src/HO.hs) we only have an example with a hardcoded n-ary sum functor.
+
+**UPDATE** [Denis Stoyanov](https://github.com/xgrommx) has pointed out that the [`haskus-utils-variant`](https://hackage.haskell.org/package/haskus-utils-variant) package provides a [higher-order open sum type](https://hackage.haskell.org/package/haskus-utils-variant-3.0/docs/Haskus-Utils-EGADT.html#t:HVariantF) (as well as a [first-order one](https://hackage.haskell.org/package/haskus-utils-variant-3.0/docs/Haskus-Utils-VariantF.html#t:VariantF)).
 
 ## Trouble in paradise
 
