@@ -258,7 +258,7 @@ printRandomFactorial' = do
 
 With this setup `logMessage` can be called within any subsystem. Subsystems can be lifted transitively and only one function is required in all the cases: `subsystem`.
 
-Note that even though the underlying machinery uses advanced features like `QuantifiedConstraints`, the user code is basically the same as with `HFM`, except there's no need to compulsively lift effects. And `Free` is not a completely trivial concept either.
+Note that even though the underlying machinery uses advanced features like `QuantifiedConstraints`, the user code is basically the same as with `HFM`, except there's no need to compulsively lift effects. `Free` is not a completely trivial concept either.
 
 Finally, this non-extensible setup is fully interoperable with the original extensible FT:
 
