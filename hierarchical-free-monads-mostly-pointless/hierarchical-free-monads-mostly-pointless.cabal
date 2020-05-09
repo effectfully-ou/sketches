@@ -1,0 +1,16 @@
+name:                hierarchical-free-monads-mostly-pointless
+version:             0.1.0.0
+cabal-version:       >=1.10
+extra-source-files:  README.md
+build-type:          Simple
+
+executable hierarchical-free-monads-mostly-pointless
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  other-modules:       HFM
+                       FT
+                       HFT
+  build-depends:       base >= 4.7 && < 5,
+                       free,
+                       random
