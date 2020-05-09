@@ -16,6 +16,7 @@ Here is one quote:
 > printRandomFactorial = do
 >     n <- getRandomInt (1, 100)
 >     logInfo $ show $ fact n
+> ```
 >
 > The same scenario with FT:
 >
@@ -32,7 +33,7 @@ Here is another one:
 
 > _True, FT is easy to extend, but by what cost? Let's see. This is how we can add an effect in FT:_
 >
->```
+> ```haskell
 > -- Then:
 > -- printRandomFactorial :: (Random m, WithLog SomeLogEnvironment String m) => m ()
 >
@@ -165,7 +166,9 @@ Baz  Quux  Quuz
     Logger
 ```
 
-you'll have to define 7 logging functions or use explicit lifts at the call site.
+you'll have to define 7 logging functions or to use explicit lifts at the call site.
+
+## Extensibility
 
 Here's another point that the author makes:
 
@@ -176,8 +179,6 @@ Here's another point that the author makes:
 > - Freedom is not free. Allowing business logic developers to incorporate arbitrary effects into arbitrary places will lead to a mess. Trusting to your developers is a good idea, but providing a unified design for the whole code is the practice one cannot refuse. Freedom of FT is too risky. Being opinionated is not bad, it's a way to decrease risks and to make the development cheaper. This is what HFM does and this is why it's very practical.
 
 While I sympathize with that "freedom is not free" sentiment, there always has to exist an escape hatch. When there's a looming deadline and I want to add an effect to some function just to check if a hypothesis plays out, I don't really care about your cleverly designed hierarchical subsystems, I want to get shit done and move on.
-
-## Extensibility
 
 The author seems to dislike the very possibility of extending functions with new effects when those effects are not embedded into some subsystem beforehand:
 
@@ -223,7 +224,7 @@ type Logger = Subsystem MonadLogger
 type App    = Subsystem MonadApp
 ```
 
-The instances above can be read as "Any subsystem is a `Monad` as long as it's determined by a constraint that that subsumes `Monad`".
+The instances above can be read as "Any subsystem is a `Monad` as long as it's determined by a constraint that subsumes `Monad`".
 
 `subsystem` allows to embed a, well, subsystem into any supersystem, possibly through another subsystem.
 
@@ -242,7 +243,7 @@ runApp = unSubsystem
 
 Example usage:
 
-```
+```haskell
 logged :: Logger ()
 logged = logMessage Info "a"
 
