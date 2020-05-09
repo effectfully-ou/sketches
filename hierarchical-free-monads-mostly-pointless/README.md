@@ -79,7 +79,7 @@ printRandomFactorial = do
 This snippet achieves the same as the original HFM one (see the [HFM](src/HFM.hs) module), but is nearly twice as short. Just look at that monster:
 
 <details>
-  <summary> Manually </summary>
+  <summary> Monster </summary>
   <p>
 
 ```
@@ -231,6 +231,7 @@ The instances above can be read as "Any subsystem is a `Monad` as long as it's d
 Application-level boilerplate looks like this (`deriving newtype` doesn't seem to work with `QuantifiedConstraints`, otherwise there would be less boilerplate):
 
 ```haskell
+-- Any subsystem has access to a logger as long as it's determined by a constraint that subsumes 'MonadLogger'.
 instance (forall m. constr m => MonadLogger m) => MonadLogger (Subsystem constr) where
     logMessage level msg = Subsystem $ logMessage level msg
 
@@ -264,11 +265,11 @@ Finally, this non-extensible setup is fully interoperable with the original exte
 - `App` implements `MonadApp`, so the function that allows to go from `forall m. MonadApp m => m a` to `App a` is `id`
 - going the other way around is a matter of calling `unSubsystem`, which is also zero-cost
 
-And FT is fully interoperable with the rest of Hackage.
+And FT itself is fully interoperable with the rest of Hackage.
 
 ### Testability
 
-The [Testability](https://github.com/graninas/hierarchical-free-monads-the-most-developed-approach-in-haskell/blob/master/README.md#testability) section of the article claims that it's more convenient to write tests with free monads than with FT, which is statement that I agree with. But then it proceeds with an example that can be written with FT just as well. Free monads are particularly handy when you want to implement logic like "if a call to `X` is followed by a call to `Y`, then ...". Handling such logic with FT is messy. But you can always turn an FT computation into an explicit AST and analyze it whatever way you want, without the `Free` monad indirection and the associated boilerplate. Even if you need an explicit AST (which is not going to happen often), it's still more convenient to use FT in actual business logic and reify FT as an AST in tests.
+The [Testability](https://github.com/graninas/hierarchical-free-monads-the-most-developed-approach-in-haskell/blob/master/README.md#testability) section of the article claims that it's more convenient to write tests with free monads than with FT, which is a statement that I agree with. But then it proceeds with an example that can be written with FT just as well. Free monads are particularly handy when you want to implement logic like "if a call to `X` is followed by a call to `Y`, then ...". Handling such logic with FT is messy. But you can always turn an FT computation into an explicit AST and analyze it whatever way you want, without the `Free` monad indirection and the associated boilerplate. Even if you need an explicit AST (which is not going to happen often), it's still more convenient to use FT in actual business logic and reify FT as an AST in tests.
 
 ### Conclusions
 
