@@ -3,6 +3,10 @@
 
 This is a response to [Hierarchical Free Monads: The Most Developed Approach In Haskell](https://github.com/graninas/hierarchical-free-monads-the-most-developed-approach-in-haskell/blob/master/README.md). The article makes some bold claims, but it builds on an initial straw man argument that with FT one has to enumerate all individual effects of a function in its type signature, which is not true.
 
+### Disclaimer
+
+Please note that this post is not meant to give advice on how to structure production code in Haskell. I merely take the code written in the original article and show how it can be transformed into something more ergonomic and concise.
+
 ### The straw man argument
 
 Here is one quote:
@@ -82,7 +86,7 @@ This snippet achieves the same as the original HFM one (see the [HFM](src/HFM.hs
   <summary> Monster </summary>
   <p>
 
-```
+```haskell
 import           Control.Monad.Free
 import           System.Random
 
