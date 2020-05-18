@@ -1,3 +1,11 @@
+# poly-traversable
+
+## **UPDATE**
+
+This article is superseded by [Alternative `HasLens`](https://github.com/effectfully/sketches/tree/master/has-lens-done-right). Besides, the claims about bad type inference for the "naive" FunDep versions are wrong, see [this comment](https://github.com/ghc-proposals/ghc-proposals/pull/158#issuecomment-568206301) by [Oleg Grenrus](https://github.com/phadej).
+
+## `PolyTraversable`
+
 There is the [`mono-traversable`](http://hackage.haskell.org/package/mono-traversable) package which defines monomorphic versions of the `Functor`, `Foldable` and `Traversable` classes. Monomorphic `fmap` called `omap` allows to apply a function to each element of a container and that container doesn't have to be a type constructor (i.e. a thing of kind `* -> *`).
 
 `fmap` has this signature:

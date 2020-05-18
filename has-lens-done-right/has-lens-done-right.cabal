@@ -4,7 +4,7 @@ cabal-version:       >=1.10
 extra-source-files:  README.md
 build-type:          Simple
 
-executable poly-traversable
+executable has-lens-done-right
   hs-source-dirs:      src
   main-is:             Main.hs
   default-language:    Haskell2010

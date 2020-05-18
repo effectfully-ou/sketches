@@ -459,7 +459,7 @@ instance t ~ User => SameModulo "name" User t where
     lensAt _ f (User email name) = User email <$> f name
 ```
 
-Unlike with the other approaches, type inference is bidirectional:
+Type inference is bidirectional:
 
 ```haskell
 -- Found type wildcard ‘_’ standing for ‘([Char] -> String) -> User’
