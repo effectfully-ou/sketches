@@ -1,8 +1,8 @@
-# Haskell: jump-to-definition in Emacs (and probably Vim)
+# Haskell: jump-to-definition in Emacs
 
 ## Motivation
 
-Jump-to-definition doesn't work well for Haskell in emacs. It didn't work well with Intero, it doesn't work well with Dante, it isn't going to work well with `haskell-ide-engine` in the foreseeable future, [it seems](https://github.com/haskell/haskell-ide-engine/issues/308).
+Jump-to-definition doesn't work well for Haskell in Emacs. It didn't work well with Intero, it doesn't work well with Dante, it isn't going to work well with `haskell-ide-engine` in the foreseeable future, [it seems](https://github.com/haskell/haskell-ide-engine/issues/308).
 
 The lack of a decent jump-to-definition has been bugging me for ages. Here are some of the problems:
 
@@ -12,6 +12,12 @@ The lack of a decent jump-to-definition has been bugging me for ages. Here are s
 4. wanna navigate the source code of a dependency like `base` or `lens`? You want too much
 
 This post describes how to mitigate these problems.
+
+The post is about Emacs, but some of it applies to Vim as well.
+
+## Disclaimer
+
+My Emacs skills are nearly non-existent, so there may exist better ways of doing what I'm doing here. I'd appreciate any ideas on possible improvements of the presented solution.
 
 ## Jumping from one Cabal stanza into another one within a single Cabal project
 
@@ -52,7 +58,7 @@ to ensure that `generate-hasktags.sh` only runs when editing a Haskell file.
 
 On save `hasktags-emacs` will recursively search up the directory tree to find the `TAGS` file and repopulate it if it exists. If there is no such file, nothing happens. So you need to create such a file manually. The root of your project is a good place to create it in, unless the project is huge.
 
-You'll also need to tell Emacs how to locate the `TAGS` file using the same "recursively search up the directory tree" logic. I've found this piece of code on the Internet (full code is in the `code.el` file):
+You'll also need to tell Emacs how to locate the `TAGS` file using the same "recursively search up the directory tree" logic. I've found this piece of code on the Internet (**full code from now on is in the `code.el` file**):
 
 ```elisp
 (defun jds-find-tags-file ()
@@ -116,18 +122,24 @@ Or you can set the value of `tags-table-list` via `.dir-locals.el`, which is a f
 
 Then every time you enter the directory the `TAGS` files of `project1` and `project2` will be loaded. Didn't try that, though.
 
-## Jumping into third party libraries
+## Jumping into third-party libraries
 
-haskdogs
+You can generate tags for a project __and its dependencies__ via [haskdogs](https://hackage.haskell.org/package/haskdogs). The dependencies have to be explicitly imported in `.hs` files of the project (`haskdogs` scans import sections of `*.hs` files). I have a folder called `registry` where I store a Haskell project with a single `*.hs` file that only imports stuff from `base`, `containers`, `mtl`, `lens`, etc. Running
+
+```
+haskdogs --hasktags-args "-e"
+```
+
+over it generates a ~1 MB TAGS file (I thought it was bigger), which I then load by default via
 
 ```elisp
 (custom-set-variables
   <...>
- '(tags-table-list (quote ("<path-to-your-registry-folder>/TAGS"))))
+ '(tags-table-list (quote ("<path-to-the-registry-folder>/TAGS"))))
 ```
 
+Now whenever I want to jump into `base` or `lens` from any Haskell project, I hit `C-M-.` and it works.
 
+## Conclusions
 
-
-(add-hook 'c++-mode-hook
-          (lambda () (add-hook 'before-save-hook MY-HOOK-FUNC nil 'local)))
+Setting up all of this is tiresome, but now that I've been using this machinery for a few months, I can't think of not having jump-to-definition working in lots of important cases.
