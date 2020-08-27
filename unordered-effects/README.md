@@ -296,7 +296,7 @@ It doesn't type check:
         arising from a use of ‘send’
 ```
 
-The thing here is that at the call site the type of `Right abc` is underspecified: it's `Either a0 String` for some unspecified `a0`. We know the `a0` is supposed to be `Char`, because we have only one `Either` effect in the row of effects, but we haven't communicated that reasoning to the compiler. So let's do that.
+The thing here is that at the call site the type of `Right "abc"` is underspecified: it's `Either a0 String` for some unspecified `a0`. We know the `a0` is supposed to be `Char`, because we have only one `Either` effect in the row of effects, but we haven't communicated that reasoning to the compiler. So let's do that.
 
 The idea is the following: we try to unify an `eff` effect with each of the effects from an `effs` row of effects by checking for equality the head of `eff` (the head of `f x y z` is `f`) and the head of each of the effects from `eff`. Once a matching head is found, we add constraints unifying the arguments (that the heads are applied to) element-wise.
 
