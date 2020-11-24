@@ -1,23 +1,23 @@
-{-# LANGUAGE AllowAmbiguousTypes     #-}
-{-# LANGUAGE ConstraintKinds         #-}
-{-# LANGUAGE FlexibleContexts        #-}
-{-# LANGUAGE FlexibleInstances       #-}
-{-# LANGUAGE MagicHash               #-}
-{-# LANGUAGE MultiParamTypeClasses   #-}
-{-# LANGUAGE PartialTypeSignatures   #-}
-{-# LANGUAGE PolyKinds               #-}
-{-# LANGUAGE RankNTypes              #-}
-{-# LANGUAGE ScopedTypeVariables     #-}
-{-# LANGUAGE TupleSections           #-}
-{-# LANGUAGE TypeApplications        #-}
-{-# LANGUAGE TypeInType              #-}
-{-# LANGUAGE TypeFamilies            #-}
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE ConstraintKinds       #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MagicHash             #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE PolyKinds             #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TupleSections         #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeInType            #-}
 
 module Main where
 
-import           Data.Kind (Type)
-import           GHC.Prim
 import           Control.Lens hiding (lens)
+import           Data.Kind    (Type)
+import           GHC.Prim
 
 main :: IO ()
 main = mempty
