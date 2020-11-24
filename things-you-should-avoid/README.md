@@ -107,3 +107,5 @@ newtype AtAllCosts f = AtAllCosts
 instance Avoid (AtAllCosts Success) where
     avoid (AtAllCosts (Success void)) = void
 ```
+
+Bonus: [this article should be avoided](https://www.reddit.com/r/haskell/comments/j55bk6/things_you_should_avoid/g7rmggo/).
