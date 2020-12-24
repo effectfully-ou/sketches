@@ -4,7 +4,7 @@ This post is a response to [`Try.do` for recoverable errors in Haskell](https://
 
 ## Preface
 
-The purpose on an effect system is to allow the programmer to track effects in their code and mash them together. There are lots of axes is the design space of effect systems:
+The purpose on an effect system is to allow the programmer to track effects in their code and mash them together. There are lots of axes in the design space of effect systems:
 
 - Performance: `mtl` is pretty fast (but [not nearly as fast as we'd like it to be](https://www.youtube.com/watch?v=0jI-AlWEwYI)), extensible effect systems are usually slower, but some (e.g. [`fused-effects`](https://hackage.haskell.org/package/fused-effects-0.1.1.0)) come very close and we have hopes (see [`eff`](https://github.com/hasura/eff)) for having an effect system that is faster than `mtl`. Besides, compilation speed is an important factor as well.
 - Definition-site boilerplate: how much code does the programmer need to write in order to introduce a new effect? For `mtl` -- plenty, due to the O(n*m) number of instances problem, with extensible effect systems -- less, but how much less depends on the expressiveness of the system and whether it's designed to be a low-boilerplate one (like [`polysemy`](https://reasonablypolymorphic.com/blog/freer-higher-order-effects/)) in the first place.
@@ -14,11 +14,11 @@ The purpose on an effect system is to allow the programmer to track effects in t
 
 So there are trade-offs involved and different contenders were designed with different priorities in mind. `monad-control` is powerful but dangerous, `unliftio` is restrictive but safe. I'm going to argue that `unliftio` + `Try.do` is both restrictive and dangerous, which does not make it an appealing way of managing effects.
 
-##
+## The actual response
 
 When designing a library that provides functions running in `IO` there's always a choice of how the types should look like. Should functions return `ExceptT Error IO Result`? Or `IO (Either Error Result)`? Or just `IO` with an `Error` being thrown exceptionally? This is a highly debatable topic (for example, some people have [strong opinions](https://www.fpcomplete.com/blog/2016/11/exceptions-best-practices-haskell) regarding mixing `IO` with `ExceptT` or `Either`) and we're not going down this rabbit hole, but I just want to mention that
 
-1. "I hate exceptions" is not a good argument for providing an API where functions catch all possible exceptions. In the presence of asynchronous exceptions this imposes the burden of rethrowing the asynchronous exception on the user, which is impossible, given that any exception can be thrown asynchronously and so you just can't tell how an exception was thrown when you catch it. See [Asynchronous exception handling in Haskell](https://www.fpcomplete.com/blog/2018/04/async-exception-handling-haskell/) for details.
+1. "I hate exceptions" is not a good argument for providing an API where functions catch all possible exceptions. In the presence of asynchronous exceptions this imposes the burden of rethrowing the asynchronous exception on the user, which is impossible, given that any exception can be thrown asynchronously and so you just can't tell how an exception was thrown. See [Asynchronous exception handling in Haskell](https://www.fpcomplete.com/blog/2018/04/async-exception-handling-haskell/) for details.
 2. There does exist at least one argument in favor of mixing `IO` with `ExceptT` or `Either`: it might make sense to report errors specific to the domain of the library explicitly to ensure the programmer handles them in a specific way, while letting general `IOException`s bubble up and be handled generally (possibly by letting them kill the application/thread). There does exist a qualitative difference between domain-specific errors and general ones like "can't access network", so differentiating between these two kinds of errors may well make sense.
 
 So I'm not hating on the `IO (Either Error Result)` pattern. This post is meant to criticize only turning this pattern into a framework.
@@ -86,9 +86,9 @@ Can you imagine running
 try (someAction :: IO (Either E A))
 ```
 
-within `Try.do` and not realizing that this makes the wrong `Either` come first? You won't even get a type error (provided `E` implements `Exception`) if you do something with the result, the whole thing will just misbehave in runtime.
+within `Try.do` and not realizing that this makes the wrong `Either` come first? You won't even get a type error (provided `E` implements `Exception`) if you do something with the result. The whole thing will just misbehave in runtime.
 
-What's worse in the original post is that inherently unsafe (compositionality-wise) `Try.do` gets mixed with `unliftio` designed specifically to be safe. So you use this pattern of structuring everything as `MonadUnliftIO m => m (Either E A)` where `Either` carries the error-handling semantics and then you want to use it as if it was a normal `IO` action returning some result. So you do
+What's worse in the original post is that inherently unsafe (compositionality-wise) `Try.do` gets mixed with `unliftio` designed specifically to be safe. You use this pattern of structuring everything as `MonadUnliftIO m => m (Either E A)` where `Either` carries the error-handling semantics and then you want to use it as if it was a normal `IO` action returning some result. So you do
 
 ```
 someAction1 `finally` someAction2
@@ -100,13 +100,13 @@ someAction1 `finally` someAction2
 finally :: MonadUnliftIO m => m a -> m b -> m a
 ```
 
-And in case you think it's too stupid of a mistake to make, can you immedatiely see how such error-handling works in
+And in case you think it's too stupid of a mistake to make, can you immedatiely see how such error handling works in
 
 ```haskell
 bracket :: MonadUnliftIO m => m a -> (a -> m b) -> (a -> m c) -> m c
 ```
 
-? It's easy to reach for `bracket` without thinking too much on what happens with those hidden errors.
+? It's way too easy to reach for `bracket` without thinking too much on what happens with those hidden errors.
 
 `unliftio` saves you from any of this by prohibiting a `MonadUnliftIO` instance of `ExceptT`. And there's no point in mixing a safe but restrictive library with a shallow unsafe trick into a single weak spoiled framework: either stick to safety or sacrifice it for expressiveness.
 
