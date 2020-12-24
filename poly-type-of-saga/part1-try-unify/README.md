@@ -244,7 +244,7 @@ defaultAllToTrue Proxy :: Proxy 'True
 
 `TryUnify` uses an [`INCOHERENT`](https://downloads.haskell.org/%7Eghc/latest/docs/html/users_guide/glasgow_exts.html#ghc-flag--XOverlappingInstances) instance. How bad are they? Well, it's one of the most god-awful extensions of the language (together with `OVERLAPPING` instances). Not as terrible as `RecordWildCards` making your code write-only (sorry, I had to make this point), but still rather terrible, as incoherent instances make the order, in which constraints get solved, matter.
 
-For one thing, `(C, D) => <...>` and `(D, C) => <...>` are no longer equivalent now. For examples, if instead of the current
+For one thing, `(C, D) => <...>` and `(D, C) => <...>` are no longer equivalent. For example, if instead of the current
 
 ```haskell
 instance {-# INCOHERENT #-} (DefaultAllTo d b, d ~?~ y) => DefaultAllTo d (y :: b)
@@ -257,7 +257,7 @@ instance {-# INCOHERENT #-} (d ~?~ y, DefaultAllTo d b) => DefaultAllTo d (y :: 
 ```
 
 
-then GHC would first try to unify `d` with `y` and only then recurse into `b` (the kind of `y`). Which could actually result in a different specialization. For example, we had this example above:
+then GHC would first try to unify `d` with `y` and only then recurse into `b` (the kind of `y`). Which could actually result in a different specialization. For instance, we had this example above:
 
 ```
 >>> :set -fprint-explicit-foralls
@@ -265,13 +265,13 @@ then GHC would first try to unify `d` with `y` and only then recurse into `b` (t
 defaultAllToInt Proxy :: forall {t :: Int}. Proxy t
 ```
 
-but if instead of first recursing into the kind of a leaf we attempted to unify the leaf with the default value, we'd specialize
+but if instead of recursing into the kind of a leaf first, we attempted to unify the leaf with the default value right away, we'd specialize
 
 ```
 Proxy :: forall {a :: *} (x :: a). Proxy x
 ```
 
-as `Proxy :: Proxy Int`, since that's what you get by unifying `x` with `Int` right away.
+as `Proxy :: Proxy Int`, since that's what you get by unifying `x` with `Int`.
 
 But it gets worse, for instance you can change the order of elements in a list and get a different type inferred:
 
