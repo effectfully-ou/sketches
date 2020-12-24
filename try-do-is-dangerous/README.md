@@ -108,7 +108,7 @@ bracket :: MonadUnliftIO m => m a -> (a -> m b) -> (a -> m c) -> m c
 
 ? It's way too easy to reach for `bracket` without thinking too much on what happens with those hidden errors.
 
-`unliftio` saves you from any of this by prohibiting a `MonadUnliftIO` instance of `ExceptT`. And there's no point in mixing a safe but restrictive library with a shallow unsafe trick into a single weak spoiled framework: either stick to safety or sacrifice it for expressiveness.
+`unliftio` saves you from any of this by prohibiting any [sane](https://github.com/fpco/unliftio/issues/68#issuecomment-727255763) `MonadUnliftIO` instance of `ExceptT`. And there's no point in mixing a safe but restrictive library with a shallow unsafe trick into a single weak spoiled framework: either stick to safety or sacrifice it for expressiveness.
 
 ## Conclusions
 
