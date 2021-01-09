@@ -1,0 +1,7 @@
+resolver: lts-16.27
+
+packages:
+- .
+
+extra-deps:
+- nothunks-0.1.2
