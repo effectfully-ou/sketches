@@ -4,7 +4,7 @@
 
 Haskell is a lazy language, which has its consequences. In this post I'll demonstrate just how easy it is to shoot yourself in the foot with laziness using the classic example of computing Fibonacci numbers, which very ironically virtually all relevant Haskell documentation gets wrong, given that it's [the primary use case for Haskell](https://serokell.io/blog/compile-time-evaluation-haskell).
 
-**DISCLAIMER**: this post is not meant to criticize Haskell for being lazy, I'll merely show how the language gets misused. I'm also not the first one to realize that the classic definitions of the Fibonacci sequence are problematic (someone on the Internet pointed that out to me, but that was long ago and I don't remember who that was).
+**DISCLAIMER**: this post is not meant to criticize Haskell for being lazy, I'll merely show how the language gets misused. I'm also not the first one to realize that the classic definitions of the Fibonacci sequence are problematic (someone on the Internet pointed that out to me, but that was long ago and I don't remember who that was). And this post is not about computing Fibonacci numbers efficiently -- it's about not leaking space with the Fibonacci sequence taken as an example.
 
 ## The problem
 
