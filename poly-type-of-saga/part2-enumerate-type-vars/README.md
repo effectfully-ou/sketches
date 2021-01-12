@@ -162,7 +162,7 @@ instance
 
 Note how enumeration of type variables for the argument starts with the same fresh id (`j`) that enumeration for the function ended with.
 
-The base case if a bit more interesting:
+The base case is a bit more interesting:
 
 ```haskell
 instance {-# INCOHERENT #-}
