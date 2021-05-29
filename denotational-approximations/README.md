@@ -32,7 +32,7 @@ observe (lift (m >>= f)) = observe (lift m >>= lift . f)
 
 So the `pipes` package defines its own equality and `Pipe` is a quotient type actually.
 
-Everything related to bottoms and `seq` is completely ignored by that `=`. See [Hask is not a category](http://math.andrej.com/2016/08/06/hask-is-not-a-category/) and [State monads don't respect the monad laws in Haskell](https://mail.haskell.org/pipermail/haskell/2002-May/009622.html). 
+Everything related to bottoms and `seq` is completely ignored by that `=`. See [Hask is not a category](http://math.andrej.com/2016/08/06/hask-is-not-a-category/) and [State monads don't respect the monad laws in Haskell](https://mail.haskell.org/pipermail/haskell/2002-May/009622.html).
 
 Okay, so `=` is a rather vague beast. But besides being vague, its presentation also does some actual harm, because equalities usually hold denotationally (for some definition of "hold") and operational semantics (which is very important in the programming setting) is not even considered, which can lead to true bugs. Here is an example: by default `(*>)` is defined in terms of `(<*>)` like this: `a1 *> a2 = (id <$ a1) <*> a2` and `f <*> a` is very often strict and defined as "compute `f`, compute `a`, apply the result of the former computation to the result of the latter". Now if something fails to inline you get that `a1 *> a2` has this semantics: "compute `a1`, compute `a2`, discard the result of the former computation, return the result of the latter". "Sounds fine" you might think, but if `a2` is a recursive call, the computation won't be tail-recursive and you'll get a space leak. This is not some imaginary situation: I actually got a space leak, because `(*>)` wasn't specified for `Control.Monad.Trans.State.Strict` in the beginning of 2017. So I dumped Core and saw how a perfectly tail-recursive function compiles to something like
 
@@ -52,3 +52,5 @@ Speaking generally, **it is obviously good to have laws**, but it is not obvious
 but I'm not yet convinced that supposed laws for monadic lenses are of the same importance, so I do not agree currently with the following sentiment:
 
 > the above situation [no laws for monadic lenses] ultimately killed any expression of a "monadic lens."
+
+If you liked this post and appreciate the effort, consider becoming a [sponsor (starts from 1$)](https://github.com/sponsors/effectfully-ou).

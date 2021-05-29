@@ -300,3 +300,5 @@ But that's an imaginary use case. There's an actual one, which is how this posts
 ## Conclusions
 
 I think this all is as awful as fun. Awfun. Future posts are going to be even more awfun, this one is merely a warm-up.
+
+If you liked this post and appreciate the effort, consider becoming a [sponsor](https://github.com/sponsors/effectfully-ou) (starts from 1$).

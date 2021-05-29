@@ -352,3 +352,5 @@ The kind (`b`) of the leaf (`y`) may contain uninstantiated variables itself, bu
 So here you have it, enumeration of type variables. Not too hacky, but that's only because we handle neither dependent kinding nor constraints right.
 
 I'll probably do a post on handling constraints next time.
+
+If you liked this post and appreciate the effort, consider becoming a [sponsor](https://github.com/sponsors/effectfully-ou) (starts from 1$).
