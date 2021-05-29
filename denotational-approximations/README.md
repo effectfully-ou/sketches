@@ -53,4 +53,4 @@ but I'm not yet convinced that supposed laws for monadic lenses are of the same 
 
 > the above situation [no laws for monadic lenses] ultimately killed any expression of a "monadic lens."
 
-If you liked this post and appreciate the effort, consider becoming a [sponsor (starts from 1$)](https://github.com/sponsors/effectfully-ou).
+If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

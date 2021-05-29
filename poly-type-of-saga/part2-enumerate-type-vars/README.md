@@ -353,4 +353,4 @@ So here you have it, enumeration of type variables. Not too hacky, but that's on
 
 I'll probably do a post on handling constraints next time.
 
-If you liked this post and appreciate the effort, consider becoming a [sponsor](https://github.com/sponsors/effectfully-ou) (starts from 1$).
+If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

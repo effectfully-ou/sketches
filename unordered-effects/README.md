@@ -637,4 +637,4 @@ The post is more of an exploratory kind. We've explored a bit the unorderness co
 
 See the full code of the main first-order version [here](src/Main.hs).
 
-If you liked this post and appreciate the effort, consider becoming a [sponsor](https://github.com/sponsors/effectfully-ou) (starts from 1$).
+If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

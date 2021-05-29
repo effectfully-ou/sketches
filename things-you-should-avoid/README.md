@@ -110,4 +110,4 @@ instance Avoid (AtAllCosts Success) where
 
 Bonus: [this article should be avoided](https://www.reddit.com/r/haskell/comments/j55bk6/things_you_should_avoid/g7rmggo/).
 
-If you liked this post and appreciate the effort, consider becoming a [sponsor](https://github.com/sponsors/effectfully-ou) (starts from 1$).
+If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

@@ -535,4 +535,4 @@ So the `SameModulo` approach
 - compared to the version with functional dependencies: less straightforward, doesn't fall apart on direct phantom types and type families (both can be encoded with a small indirection with the functional dependencies approach).
 - compared to the version with type families: type inference is not half-broken, less noise, doesn't fall apart on direct phantom types and type families (both can _probably_ be encoded with a small indirection with the type families approach).
 
-If you liked this post and appreciate the effort, consider becoming a [sponsor](https://github.com/sponsors/effectfully-ou) (starts from 1$).
+If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

@@ -127,4 +127,4 @@ Moral of the story: if there's laziness exposed to the user, all laws are off. W
 
 Don't do any of that at home.
 
-If you liked this post and appreciate the effort, consider becoming a [sponsor](https://github.com/sponsors/effectfully-ou) (starts from 1$).
+If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

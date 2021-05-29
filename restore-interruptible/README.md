@@ -68,4 +68,4 @@ This is a completely new scenario: previously [2] would execute iff `putMVar` su
 
 So what happens is that `putMVar` does not fill the entire "exception-sensitive box" that `restore` creates within its scope. There's that tiny space between the internal `putMVar` and the enclosing `restore` where an async exception can be raised. So beware.
 
-If you liked this post and appreciate the effort, consider becoming a [sponsor](https://github.com/sponsors/effectfully-ou) (starts from 1$).
+If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

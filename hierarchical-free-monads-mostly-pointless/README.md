@@ -279,4 +279,4 @@ The [Testability](https://github.com/graninas/hierarchical-free-monads-the-most-
 
 Thereby I conclude that Hierarchical Free Monads are mostly pointless.
 
-If you liked this post and appreciate the effort, consider becoming a [sponsor](https://github.com/sponsors/effectfully-ou) (starts from 1$).
+If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

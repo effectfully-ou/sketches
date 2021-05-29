@@ -147,4 +147,4 @@ But lenses in `monad-var` are not quite satifactory. Here are the problems:
 
 And there is an encoding that seems to solve all these problems. It uses profunctor optics, so you'll like it. Stay tuned.
 
-If you liked this post and appreciate the effort, consider becoming a [sponsor](https://github.com/sponsors/effectfully-ou) (starts from 1$).
+If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

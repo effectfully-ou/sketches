@@ -114,4 +114,4 @@ bracket :: MonadUnliftIO m => m a -> (a -> m b) -> (a -> m c) -> m c
 
 Point is, syntactic tricks are not type safety (a reference to [Names are not type safety](https://lexi-lambda.github.io/blog/2020/11/01/names-are-not-type-safety)).
 
-If you liked this post and appreciate the effort, consider becoming a [sponsor](https://github.com/sponsors/effectfully-ou) (starts from 1$).
+If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

@@ -168,4 +168,4 @@ as `a` must be non-functional now and we have to add the `CountArgs a ~ Z` const
 
 However we can adapt the first solution presented in this post and use type families to count the number of `->`s in `f a -> f b -> ...` and then dispatch on the resulting natural, in which case we no longer need the mutual type classes trick anymore. See the [BackwardsTF](src/BackwardsTF.hs) module for details. But it's not clear whether it's possible to adapt this solution to infer types in the monomorphic case like we did in the previous section.
 
-If you liked this post and appreciate the effort, consider becoming a [sponsor](https://github.com/sponsors/effectfully-ou) (starts from 1$).
+If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).
