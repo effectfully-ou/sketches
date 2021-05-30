@@ -26,13 +26,13 @@ error:
 
 By comparing the "Expected type" and "Actual type" lines we can figure out at which key the type mismatch has occurred, but such lines can get huge and it would be nice to be able to define custom type equality errors specifying important information directly (in our case, the key), so that the user does not need to dig it out themselves. Plus, in the above case we get to the error too late during type checking, which causes the whole expression to be printed in the error message. If the error was triggered in a more localized way, the error message would be less noisy and more to the point.
 
-There's a way to fix both of these problems. The trick is to define a separate type class mimicking type equality constraints but having custom equality checks:
+There's a way to fix both of these problems. The trick is to define a separate type class mimicking type equality constraints but also having a custom equality check:
 
 ```haskell
 type CheckEqualKV :: forall k v. k -> k -> v -> v -> Constraint
 type family CheckEqualKV k1 k2 v1 v2 where
-    CheckEqualKV k1 k1 v1 v1 = ()
-    CheckEqualKV k1 k2 v1 v2 =
+    CheckEqualKV k1 k1 v1 v1 = ()              -- Keys and values are equal, we're fine.
+    CheckEqualKV k1 k2 v1 v2 =                 -- Something is not right, throw a type error.
         TypeError
             ( 'ShowType (k1 ':-> v1) ':<>:
               'Text " is not equal to " ':<>:
@@ -110,5 +110,9 @@ bar = ext (Var :: (Var "x")) (2 :: Int)
     $ ext (Var :: (Var "w")) (5 :: Int)
     $ Empty
 ```
+
+Full code is available at [`src/Main.hs`](./src/Main.hs).
+
+Thanks to [Artyom Kazak](https://github.com/neongreen) for introducing me to the problem.
 
 If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).
