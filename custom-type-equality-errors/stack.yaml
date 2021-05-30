@@ -1,0 +1,7 @@
+resolver: lts-17.2
+
+packages:
+- .
+
+extra-deps:
+- type-level-sets-0.8.9.0
