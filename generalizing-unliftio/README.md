@@ -88,7 +88,7 @@ such that it was possible to instantiate it as both `testApp` and `testAppT`.
 
 Our goal is to arrive at an abstraction allowing for such generality.
 
-## Drop the restriction on the base monad
+## Drop the restriction on the base monad ([full code](./src/Unlift.hs))
 
 In `MonadUnliftIO` the base monad is always `IO`. One pretty obvious generalization is to drop this restriction and make the base monad an argument of the class:
 
