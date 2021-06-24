@@ -16,7 +16,7 @@ import           Control.Monad.Except
 import           Control.Monad.Trans.Reader
 import           Debug.Trace
 
-class (Monad b, Monad m) => MonadUnliftPeel p b m | m -> p, m -> b where
+class (Monad b, Monad m) => MonadUnliftPeel p b m | m b -> p, m p -> b where
     withUnliftPeel :: ((forall a. p a -> b a) -> b r) -> m r
 
 instance MonadUnliftPeel IO IO IO where
@@ -34,9 +34,9 @@ instance {-# OVERLAPPING #-}
             MonadUnliftPeel p b m => MonadUnliftPeel (ExceptT e p) (ExceptT e b) (ExceptT e m) where
     withUnliftPeel k =
         trace "OVERLAPPING" $
-            ExceptT $ withUnliftPeel $ \unlift -> runExceptT $ k $ ExceptT . unlift . runExceptT
+            ExceptT $ withUnliftPeel $ \unlift -> runExceptT $ k $ mapExceptT unlift
 
-liftU :: MonadUnliftPeel p b m => b r -> m r
+liftU :: MonadUnliftPeel m b m => b r -> m r
 liftU a = withUnliftPeel $ \_ -> a
 
 printM :: (MonadIO m, Show a) => a -> m ()
@@ -89,11 +89,33 @@ newtype AppT m a = AppT
 instance MonadUnliftPeel p b m => MonadUnliftPeel (AppT p) b (AppT m) where
     withUnliftPeel k = AppT $ withUnliftPeel $ \unlift -> k $ unlift . unAppT
 
+runAppTExcepT :: AppT (ExceptT () IO) a -> IO ()
+runAppTExcepT = void . runExceptT . flip runReaderT () . unAppT
+
+-- >>> runAppTExcepT testAppT
+-- OVERLAPPING
+-- OVERLAPPING
+-- OVERLAPPABLE
+-- ()
+-- ()
 testAppT :: AppT (ExceptT () IO) ()
-testAppT = throwError () `catchError` \() -> do
+testAppT = throwErrorU () `catchErrorU` \() -> do
     _ <- forkU $ printM ()
     printM ()
 
--- testAppG = throwErrorU () `catchErrorU` \() -> do
---     _ <- forkU $ printM ()
---     printM ()
+testAppG
+    :: ( MonadUnliftPeel m b m, MonadError () b
+       , MonadUnliftPeel p IO m
+       , MonadIO p
+       , MonadIO m
+       ) => m ()
+testAppG = throwErrorU () `catchErrorU` \() -> do  -- MonadUnliftPeel m b m, MonadError () b
+    _ <- forkU $                                   -- MonadUnliftPeel p IO m
+        printM ()                                  -- MonadIO p
+    printM ()                                      -- MonadIO m
+
+testApp2G :: ExceptT () App ()
+testApp2G = testAppG
+
+testAppTG :: AppT (ExceptT () IO) ()
+testAppTG = testAppG

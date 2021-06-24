@@ -11,10 +11,13 @@ module Unlift where
 import           Control.Concurrent
 import           Control.Monad.Except
 import           Control.Monad.Morph
+import           Control.Monad.ST
+import           Control.Monad.Trans.Identity
 import           Control.Monad.Trans.Reader
+import           Data.Functor.Identity
 
--- class (Monad n, Monad m) => MonadUnlift n m | m -> n where
---     withUnlift :: ((forall a. m a -> n a) -> n b) -> m r
+-- class (Monad b, Monad m) => MonadUnlift b m | m -> b where
+--     withUnlift :: ((forall a. m a -> b a) -> b r) -> m r
 
 class (Monad (Unlift m), Monad m) => MonadUnliftable m where
     type Unlift m :: * -> *
@@ -28,9 +31,21 @@ instance MonadUnliftable m => MonadUnliftable (ReaderT r m) where
     type Unlift (ReaderT r m) = Unlift m
     withUnlift k = ReaderT $ \r -> withUnlift $ \unlift -> k $ unlift . flip runReaderT r
 
+instance MonadUnliftable (ST s) where
+    type Unlift (ST s) = ST s
+    withUnlift k = k id
+
+instance MonadUnliftable Identity where
+    type Unlift Identity = Identity
+    withUnlift k = k id
+
+instance MonadUnliftable m => MonadUnliftable (IdentityT m) where
+    type Unlift (IdentityT m) = m
+    withUnlift k = IdentityT $ k runIdentityT
+
 instance MonadUnliftable m => MonadUnliftable (ExceptT e m) where
     type Unlift (ExceptT e m) = ExceptT e (Unlift m)
-    withUnlift k = ExceptT $ withUnlift $ \unlift -> runExceptT $ k $ ExceptT . unlift . runExceptT
+    withUnlift k = ExceptT $ withUnlift $ \unlift -> runExceptT $ k $ mapExceptT unlift
 
 type MonadUnlift b m = (MonadUnliftable m, Unlift m ~ b)
 
