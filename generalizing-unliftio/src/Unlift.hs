@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds            #-}
+{-# LANGUAGE DeriveAnyClass             #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -7,6 +8,8 @@
 {-# LANGUAGE UndecidableInstances       #-}
 
 module Unlift where
+
+import           SomeAction
 
 import           Control.Concurrent
 import           Control.Monad.Except
@@ -52,9 +55,6 @@ type MonadUnlift b m = (MonadUnliftable m, Unlift m ~ b)
 liftU :: MonadUnlift b m => b a -> m a
 liftU a = withUnlift $ \_ -> a
 
-printM :: (MonadIO m, Show a) => a -> m ()
-printM = liftIO . print
-
 forkU :: MonadUnlift IO m => m () -> m ThreadId
 forkU a = withUnlift $ \unlift -> forkIO $ unlift a
 
@@ -67,22 +67,24 @@ a `catchErrorU` f = withUnlift $ \unlift -> unlift a `catchError` (unlift . f)
 newtype App a = App
     { unApp :: ReaderT () IO a
     } deriving newtype (Functor, Applicative, Monad, MonadIO, MonadUnliftable)
+      deriving anyclass (SomeAction)
 
 testApp :: ExceptT () App ()
 testApp = throwError () `catchError` \() -> do
-    _ <- lift . forkU $ printM ()
+    _ <- lift $ forkU someAction
     printM ()
 
 testAppU :: ExceptT () App ()
 testAppU = throwErrorU () `catchErrorU` \() -> do
-    _ <- lift . forkU $ printM ()
+    _ <- lift $ forkU someAction
     printM ()
 
 newtype AppT m a = AppT
     { unAppT :: ReaderT () m a
     } deriving newtype (Functor, Applicative, Monad, MonadIO, MonadUnliftable, MFunctor)
+      deriving anyclass (SomeAction)
 
 testAppT :: AppT (ExceptT () IO) ()
 testAppT = throwErrorU () `catchErrorU` \() -> do
-    _ <- hoist lift . forkU $ printM ()
+    _ <- hoist lift $ forkU someAction
     printM ()

@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds            #-}
+{-# LANGUAGE DeriveAnyClass             #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
@@ -10,6 +11,8 @@
 {-# LANGUAGE UndecidableInstances       #-}
 
 module UnliftPeel where
+
+import           SomeAction
 
 import           Control.Concurrent
 import           Control.Monad.Except
@@ -39,9 +42,6 @@ instance {-# OVERLAPPING #-}
 liftU :: MonadUnliftPeel m b m => b r -> m r
 liftU a = withUnliftPeel $ \_ -> a
 
-printM :: (MonadIO m, Show a) => a -> m ()
-printM = liftIO . print
-
 forkU :: MonadUnliftPeel p IO m => p () -> m ThreadId
 forkU a = withUnliftPeel $ \unlift -> forkIO $ unlift a
 
@@ -54,6 +54,7 @@ catchErrorU a f = withUnliftPeel $ \unlift -> unlift a `catchError` (unlift . f)
 newtype App a = App
     { unApp :: ReaderT () IO a
     } deriving newtype (Functor, Applicative, Monad, MonadIO)
+      deriving anyclass (SomeAction)
 
 instance MonadUnliftPeel App IO App where
     withUnliftPeel k = App $ withUnliftPeel $ \unlift -> k $ unlift . unApp
@@ -64,27 +65,28 @@ runExceptTApp = void . flip runReaderT () . unApp . runExceptT
 -- >>> runExceptTApp testApp1
 -- Keeping ExceptT
 -- Keeping ExceptT
--- ()
+-- performed some action
 -- ()
 testApp1 :: ExceptT () App ()
 testApp1 = throwErrorU () `catchErrorU` \() -> do
-    _ <- lift . forkU $ printM ()
+    _ <- lift $ forkU someAction
     printM ()
 
 -- >>> runExceptTApp testApp2
 -- Keeping ExceptT
 -- Keeping ExceptT
 -- Dropping ExceptT
--- ()
+-- performed some action
 -- ()
 testApp2 :: ExceptT () App ()
 testApp2 = throwErrorU () `catchErrorU` \() -> do
-    _ <- forkU $ printM ()
+    _ <- forkU someAction
     printM ()
 
 newtype AppT m a = AppT
     { unAppT :: ReaderT () m a
-    } deriving (Functor, Applicative, Monad, MonadIO)
+    } deriving newtype (Functor, Applicative, Monad, MonadIO)
+      deriving anyclass (SomeAction)
 
 instance MonadUnliftPeel p b m => MonadUnliftPeel (AppT p) b (AppT m) where
     withUnliftPeel k = AppT $ withUnliftPeel $ \unlift -> k $ unlift . unAppT
@@ -96,23 +98,24 @@ runAppTExcepT = void . runExceptT . flip runReaderT () . unAppT
 -- Keeping ExceptT
 -- Keeping ExceptT
 -- Dropping ExceptT
--- ()
+-- performed some action
 -- ()
 testAppT :: AppT (ExceptT () IO) ()
 testAppT = throwErrorU () `catchErrorU` \() -> do
-    _ <- forkU $ printM ()
+    _ <- forkU someAction
     printM ()
 
 testAppG
     :: ( MonadUnliftPeel m b m, MonadError () b
        , MonadUnliftPeel p IO m
-       , MonadIO p
+       , SomeAction p
        , MonadIO m
        )
     => m ()
 testAppG = throwErrorU () `catchErrorU` \() -> do  -- MonadUnliftPeel m b m, MonadError () b
-    _ <- forkU $                                   -- MonadUnliftPeel p IO m
-        printM ()                                  -- MonadIO p
+    _ <-
+        forkU $                                    -- MonadUnliftPeel p IO m
+            printM ()                              -- MonadIO p
     printM ()                                      -- MonadIO m
 
 testApp2G :: ExceptT () App ()

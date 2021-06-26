@@ -1,6 +1,6 @@
 # Generalizing `unliftio`
 
-In this post we'll go on a journey of generalizing the [`MonadUnliftIO`](https://hackage.haskell.org/package/unliftio-core-0.2.0.1/docs/Control-Monad-IO-Unlift.html#t:MonadUnliftIO) class, which is the main concept behind the `unliftio` [package](https://hackage.haskell.org/package/unliftio), with the intention to make the core type class more expressible without losing any safety of the approach.
+In this post we'll go on a journey of generalizing the [`MonadUnliftIO`](https://hackage.haskell.org/package/unliftio-core-0.2.0.1/docs/Control-Monad-IO-Unlift.html#t:MonadUnliftIO) class, which is the main concept behind the `unliftio` [package](https://hackage.haskell.org/package/unliftio), with the intent to make the core type class more expressible without losing any safety of the approach.
 
 This post is not a tutorial on `unliftio`, so the reader is assumed to be familiar with the library (if you're not, check out the [readme](https://github.com/fpco/unliftio#readme) of the package).
 
@@ -32,12 +32,30 @@ forkU :: MonadUnliftIO m => m () -> m ThreadId
 forkU a = withRunInIO $ \runInIO -> forkIO $ runInIO a
 ```
 
+Regular `forkIO` takes an `IO` action and returns an `IO` action. `liftIO . forkIO` takes an `IO` action and returns an action running in some `MonadIO`. `forkU` takes an action running in some `MonadUnliftIO` and returns an action running in the same monad. For example, if `m` supports some kind of action
+
+```haskell
+class MonadIO m => SomeAction m where
+    someAction :: m ()
+    someAction = liftIO $ putStrLn "performed some action"
+```
+
+then `forkU`'s argument is allowed to invoke that action:
+
+```haskell
+forkSomeAction :: (MonadUnliftIO m, SomeAction m) => m ThreadId
+forkSomeAction = forkU someAction
+```
+
+which would be impossible with `forkIO` or `liftIO . forkIO` due to them hardcoding the inner action to run in bare-bones `IO`.
+
 One (intentional) limitation of `unliftio` is that it's not possible (other than by using [uncomfortable tricks](https://github.com/fpco/unliftio/issues/68)) to provide a `MonadUnliftIO` instance of `ContT`, `StateT`, `ExceptT` and everything else that is not isomorphic to `ReaderT R` for some `R`, so dealing with `ExceptT` requires extra plumbing. For one example, wrapping an `App` monad
 
 ```haskell
 newtype App a = App
     { unApp :: ReaderT () IO a
     } deriving newtype (Functor, Applicative, Monad, MonadIO, MonadUnliftIO)
+      deriving anyclass (SomeAction)
 ```
 
 with `ExceptT` and calling `forkU` within the resulting monad requires an explicit `lift`:
@@ -45,7 +63,7 @@ with `ExceptT` and calling `forkU` within the resulting monad requires an explic
 ```haskell
 testApp :: ExceptT () App ()
 testApp = throwError () `catchError` \() -> do
-    _ <- lift . forkU $ printM ()
+    _ <- lift $ forkU someAction
     printM ()
 ```
 
@@ -62,6 +80,7 @@ For another example, putting `ExceptT` inside an `AppT` transformer
 newtype AppT m a = AppT
     { unAppT :: ReaderT () m a
     } deriving newtype (Functor, Applicative, Monad, MonadIO, MonadUnliftIO, MonadError e, MFunctor)
+      deriving anyclass (SomeAction)
 ```
 
 requires even more awkward plumbing:
@@ -69,7 +88,7 @@ requires even more awkward plumbing:
 ```haskell
 testAppT :: AppT (ExceptT () IO) ()
 testAppT = throwError () `catchError` \() -> do
-    _ <- hoist lift . forkU $ printM ()
+    _ <- hoist lift $ forkU someAction
     printM ()
 ```
 
@@ -80,7 +99,7 @@ It would be great if neither `lift` in the former example, nor `hoist lift` in t
 ```haskell
 testAppG :: <a_bunch_of_constraints> => m ()
 testAppG = throwErrorU () `catchErrorU` \() -> do
-    _ <- forkU $ printM ()
+    _ <- forkU someAction
     printM ()
 ```
 
@@ -113,7 +132,7 @@ which allows us to recover the multi-parameter version via
 type MonadUnlift b m = (MonadUnliftable m, Unlift m ~ b)
 ```
 
-`MonadUnliftable`, being a generalization of `MonadUnliftIO`, supports the basic `IO` and `ReaderT` instances:
+`MonadUnliftable`, being a generalization of `MonadUnliftIO`, supports the core `IO` and `ReaderT` instances:
 
 ```haskell
 instance MonadUnliftable IO where
@@ -157,7 +176,7 @@ instance MonadUnliftable m => MonadUnliftable (ExceptT e m) where
     withUnlift k = ExceptT $ withUnlift $ \unlift -> runExceptT $ k $ mapExceptT unlift
 ```
 
-`ExceptT` is our first non-dischargeable monad transformer.
+The instance stipulates that `ExceptT` can't be removed from the monadic stack for the purposes of unlifting and therefore the base monad has to contain it. Note that it's still possible to discharge, say, `ReaderT` underneath `ExceptT` due to the recursion in the instance, even though `ExceptT` is not dischargeable itself.
 
 We can use the generalized class to provide unlifting versions of `throwError` and `catchError`:
 
@@ -181,7 +200,7 @@ Having all that machinery we can take the old test (which type checks with the g
 ```haskell
 testApp :: ExceptT () App ()
 testApp = throwError () `catchError` \() -> do
-    _ <- lift . forkU $ printM ()
+    _ <- lift $ forkU someAction
     printM ()
 ```
 
@@ -190,7 +209,7 @@ and implement its `MonadUnlift`-flavoured twin (note the `U` in `throwErrorU` an
 ```haskell
 testAppU :: ExceptT () App ()
 testAppU = throwErrorU () `catchErrorU` \() -> do
-    _ <- lift . forkU $ printM ()
+    _ <- lift $ forkU someAction
     printM ()
 ```
 
@@ -200,6 +219,7 @@ for the same `App`:
 newtype App a = App
     { unApp :: ReaderT () IO a
     } deriving newtype (Functor, Applicative, Monad, MonadIO, MonadUnliftable)
+      deriving anyclass (SomeAction)
 ```
 
 Although that does not give us any advantage over the previous version as we still have to `lift` manually.
@@ -210,10 +230,11 @@ What we do win however is that in the other test
 newtype AppT m a = AppT
     { unAppT :: ReaderT () m a
     } deriving newtype (Functor, Applicative, Monad, MonadIO, MonadUnliftable, MFunctor)
+      deriving anyclass (SomeAction)
 
 testAppT :: AppT (ExceptT () IO) ()
 testAppT = throwErrorU () `catchErrorU` \() -> do
-    _ <- hoist lift . forkU $ printM ()
+    _ <- hoist lift $ forkU someAction
     printM ()
 ```
 
@@ -291,6 +312,7 @@ catchErrorU a f = withUnliftPeel $ \unlift -> unlift a `catchError` (unlift . f)
 newtype App a = App
     { unApp :: ReaderT () IO a
     } deriving newtype (Functor, Applicative, Monad, MonadIO)
+      deriving anyclass (SomeAction)
 
 instance MonadUnliftPeel App IO App where
     withUnliftPeel k = App $ withUnliftPeel $ \unlift -> k $ unlift . unApp
@@ -301,7 +323,7 @@ we can replicate the old test:
 ```haskell
 testApp1 :: ExceptT () App ()
 testApp1 = throwErrorU () `catchErrorU` \() -> do
-    _ <- lift . forkU $ printM ()
+    _ <- lift $ forkU someAction
     printM ()
 ```
 
@@ -310,7 +332,7 @@ but also drop that `lift` and still have the example working:
 ```haskell
 testApp2 :: ExceptT () App ()
 testApp2 = throwErrorU () `catchErrorU` \() -> do
-    _ <- forkU $ printM ()
+    _ <- forkU someAction
     printM ()
 ```
 
@@ -326,7 +348,7 @@ we can check that in the original example with `lift` only the instance that kee
 >>> runExceptTApp testApp1
 Keeping ExceptT
 Keeping ExceptT
-()
+performed some action
 ()
 ```
 
@@ -337,7 +359,7 @@ while in the updated one with no explicit `lift` the instance that drops `Except
 Keeping ExceptT
 Keeping ExceptT
 Dropping ExceptT
-()
+performed some action
 ()
 ```
 
@@ -347,22 +369,20 @@ And we can drop `hoist lift` from the other example as well:
 newtype AppT m a = AppT
     { unAppT :: ReaderT () m a
     } deriving (Functor, Applicative, Monad, MonadIO)
+      deriving anyclass (SomeAction)
 
 instance MonadUnliftPeel p b m => MonadUnliftPeel (AppT p) b (AppT m) where
     withUnliftPeel k = AppT $ withUnliftPeel $ \unlift -> k $ unlift . unAppT
 
 testAppT :: AppT (ExceptT () IO) ()
 testAppT = throwErrorU () `catchErrorU` \() -> do
-    _ <- forkU $ printM ()
+    _ <- forkU someAction
     printM ()
 ```
 
-Note that
+It's important to stress that `App` gets peeled to itself and `AppT` gets peeled to itself as well. This is because whatever our main monad is, we want to be able to feed actions running in that monad to `forkU`, so that we don't lose the benefit of `unliftio` discussed in the beginning of the post.
 
-1. `AppT` doesn't even need to derive `MFunctor` now.
-2. the body of `testAppT` is literally the same as the one of `testApp2`
-
-Given the latter fact we can generalize both the examples to (the comments are constraints required by each individual line)
+Note that the body of `testAppT` is literally the same as the one of `testApp2`. Given that, we can generalize both the examples to (the comments are constraints required by each individual line)
 
 ```haskell
 testAppG
@@ -372,14 +392,15 @@ testAppG
        , MonadIO m
        ) => m ()
 testAppG = throwErrorU () `catchErrorU` \() -> do  -- MonadUnliftPeel m b m, MonadError () b
-    _ <- forkU $                                   -- MonadUnliftPeel p IO m
-        printM ()                                  -- MonadIO p
+    _ <-
+        forkU $                                    -- MonadUnliftPeel p IO m
+            printM ()                              -- MonadIO p
     printM ()                                      -- MonadIO m
 ```
 
-(Note how `m` gets peeled to itself in the first `MonadUnliftPeel` constraint ([1]) and the same @m@ gets peeled to @p@ in the second one ([2]). This is how we handle the requirement for `m` to support both the keeping-`ExceptT` and the dropping-`ExceptT` instances)
+(Note how `m` gets peeled to itself in the first `MonadUnliftPeel` constraint ([1]) and the same @m@ gets peeled to @p@ in the second one ([2]). This is how we handle this requirement for `m` to support both the keeping-`ExceptT` and the dropping-`ExceptT` instances)
 
-And we can instantiate that general definition at both the concrete types:
+And we can instantiate the general definition at both the concrete types:
 
 ```haskell
 testApp2G :: ExceptT () App ()
@@ -389,4 +410,97 @@ testAppTG :: AppT (ExceptT () IO) ()
 testAppTG = testAppG
 ```
 
-It works. Are we done though? Those overlapping instances are rather nasty (although we could probably avoid them by pattern matching at the type level on the peeled monad in a type family and choosing different routes depending on whether the peeled monad starts with `ExceptT` or not, see [Avoiding overlapping instances in the recursive case](https://github.com/effectfully/sketches/tree/master/avoid-overlapping-recursive) for a detailed description of the trick).
+It works. Are we done though? Those overlapping instances are rather nasty (although we could probably avoid them by pattern matching at the type level on the peeled monad in a type family and choosing different routes depending on whether the peeled monad starts with `ExceptT` or not, see [Avoiding overlapping instances in the recursive case](https://github.com/effectfully/sketches/tree/master/avoid-overlapping-recursive) for a detailed description of the trick). It seems we're conflating two different concepts: "unlifting" and "peeling", so why not try separating them from each other?
+
+## `MonadPeel` built on top of `MonadUnlift` ([full code](./src/Peel.hs))
+
+Here's how it looks like if we keep the `MonadUnliftable` class from the "Drop the restriction on the base monad" section intact and instead of trying to generalize it any further, add a separate `MonadPeelable` class:
+
+```haskell
+class (Monad (Peel m), Monad m) => MonadPeelable m where
+    type Peel m :: * -> *
+    liftP :: Peel m a -> m a
+```
+
+with the usual recover-the-corresponding-multi-parameter-type-class-via-a-type-equality-constraint trick:
+
+```haskell
+type MonadPeel p m = (MonadPeelable m, Peel m ~ p)
+```
+
+`MonadPeelable` is not just `MonadBase`, it's intended to be the dual of `MonadUnliftable` (I've managed to successfully avoid calling it `MonadCounliftable` and `MonadLiftable` would be too general of a name).
+
+`MonadUnliftable` discharges `ReaderT` and `AppT` and so `MonadPeelable` has to keep them:
+
+```haskell
+instance MonadPeelable m => MonadPeelable (ReaderT r m) where
+    type Peel (ReaderT r m) = ReaderT r (Peel m)
+    liftP = hoist liftP
+
+instance MonadPeelable m => MonadPeelable (AppT m) where
+    type Peel (AppT m) = AppT (Peel m)
+    liftP = hoist liftP
+```
+
+in order for us to be able to use the environment of the outer monad in the inner action.
+
+`MonadUnliftable` does not discharge `ExceptT` and so `MonadPeelable` has to drop it:
+
+```haskell
+instance MonadPeelable m => MonadPeelable (ExceptT e m) where
+    type Peel (ExceptT e m) = Peel m
+    liftP = lift . liftP
+```
+
+in order for us to get automatic lifting into the outer monad.
+
+Non-recursive instances are trivial:
+
+```haskell
+instance MonadPeelable IO where
+    type Peel IO = IO
+    liftP = id
+
+instance MonadPeelable Identity where
+    type Peel Identity = Identity
+    liftP = id
+
+instance MonadPeelable App where
+    type Peel App = App
+    liftP = id
+```
+
+Given all of that we can define the general test
+
+```haskell
+testAppG
+    :: ( MonadUnlift b m, MonadError () b
+       , MonadPeel p m
+       , MonadUnlift IO p
+       , SomeAction p
+       , MonadIO m
+       )
+    => m ()
+testAppG = throwErrorU () `catchErrorU` \() -> do  -- MonadUnlift b m, MonadError () b
+    _ <-
+        liftP $                                    -- MonadPeel p m,
+            forkU $                                -- MonadUnlift IO p
+                someAction                         -- SomeAction p
+    printM ()                                      -- MonadIO m
+```
+
+and instantiate it at both the concrete types:
+
+```haskell
+testApp :: ExceptT () App ()
+testApp = testAppG
+
+testAppT :: AppT (ExceptT () IO) ()
+testAppT = testAppG
+```
+
+without having an overly general three-parameter type class requiring overlapping instances for it to work.
+
+## Conclusions
+
+We've considered various ways of generalizing the `MonadUnliftIO` class. Nothing described has been tested in any kind of real-world environment, but the ideas kinda seem promising.
