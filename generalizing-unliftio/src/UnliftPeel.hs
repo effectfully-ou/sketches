@@ -27,13 +27,13 @@ instance MonadUnliftPeel p b m => MonadUnliftPeel (ReaderT e p) b (ReaderT e m) 
 
 instance {-# OVERLAPPABLE #-} MonadUnliftPeel p b m => MonadUnliftPeel p b (ExceptT e m) where
     withUnliftPeel k =
-        trace "OVERLAPPABLE" $
+        trace "Dropping ExceptT" $
             lift $ withUnliftPeel k
 
 instance {-# OVERLAPPING #-}
             MonadUnliftPeel p b m => MonadUnliftPeel (ExceptT e p) (ExceptT e b) (ExceptT e m) where
     withUnliftPeel k =
-        trace "OVERLAPPING" $
+        trace "Keeping ExceptT" $
             ExceptT $ withUnliftPeel $ \unlift -> runExceptT $ k $ mapExceptT unlift
 
 liftU :: MonadUnliftPeel m b m => b r -> m r
@@ -62,8 +62,8 @@ runExceptTApp :: ExceptT () App a -> IO ()
 runExceptTApp = void . flip runReaderT () . unApp . runExceptT
 
 -- >>> runExceptTApp testApp1
--- OVERLAPPING
--- OVERLAPPING
+-- Keeping ExceptT
+-- Keeping ExceptT
 -- ()
 -- ()
 testApp1 :: ExceptT () App ()
@@ -72,9 +72,9 @@ testApp1 = throwErrorU () `catchErrorU` \() -> do
     printM ()
 
 -- >>> runExceptTApp testApp2
--- OVERLAPPING
--- OVERLAPPING
--- OVERLAPPABLE
+-- Keeping ExceptT
+-- Keeping ExceptT
+-- Dropping ExceptT
 -- ()
 -- ()
 testApp2 :: ExceptT () App ()
@@ -84,7 +84,7 @@ testApp2 = throwErrorU () `catchErrorU` \() -> do
 
 newtype AppT m a = AppT
     { unAppT :: ReaderT () m a
-    } deriving (Functor, Applicative, Monad, MonadIO, MonadError e)
+    } deriving (Functor, Applicative, Monad, MonadIO)
 
 instance MonadUnliftPeel p b m => MonadUnliftPeel (AppT p) b (AppT m) where
     withUnliftPeel k = AppT $ withUnliftPeel $ \unlift -> k $ unlift . unAppT
@@ -93,9 +93,9 @@ runAppTExcepT :: AppT (ExceptT () IO) a -> IO ()
 runAppTExcepT = void . runExceptT . flip runReaderT () . unAppT
 
 -- >>> runAppTExcepT testAppT
--- OVERLAPPING
--- OVERLAPPING
--- OVERLAPPABLE
+-- Keeping ExceptT
+-- Keeping ExceptT
+-- Dropping ExceptT
 -- ()
 -- ()
 testAppT :: AppT (ExceptT () IO) ()
@@ -108,7 +108,8 @@ testAppG
        , MonadUnliftPeel p IO m
        , MonadIO p
        , MonadIO m
-       ) => m ()
+       )
+    => m ()
 testAppG = throwErrorU () `catchErrorU` \() -> do  -- MonadUnliftPeel m b m, MonadError () b
     _ <- forkU $                                   -- MonadUnliftPeel p IO m
         printM ()                                  -- MonadIO p
