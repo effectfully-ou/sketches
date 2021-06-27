@@ -62,7 +62,7 @@ testAppG
     => m ()
 testAppG = throwErrorU () `catchErrorU` \() -> do  -- MonadUnlift b m, MonadError () b
     _ <-
-        liftP $                                    -- MonadPeel p m,
+        liftP $                                    -- MonadPeel p m
             forkU $                                -- MonadUnlift IO p
                 someAction                         -- SomeAction p
     printM ()                                      -- MonadIO m

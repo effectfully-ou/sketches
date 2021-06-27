@@ -114,8 +114,8 @@ testAppG
     => m ()
 testAppG = throwErrorU () `catchErrorU` \() -> do  -- MonadUnliftPeel m b m, MonadError () b
     _ <-
-        forkU $                                    -- MonadUnliftPeel p IO m
-            printM ()                              -- MonadIO p
+        forkU                                      -- MonadUnliftPeel p IO m
+            someAction                             -- SomeAction p
     printM ()                                      -- MonadIO m
 
 testApp2G :: ExceptT () App ()

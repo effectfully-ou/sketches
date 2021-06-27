@@ -343,7 +343,7 @@ runExceptTApp :: ExceptT () App a -> IO ()
 runExceptTApp = void . flip runReaderT () . unApp . runExceptT
 ```
 
-we can check that in the original example with `lift` only the instance that keeps 'ExceptT' is used (once for `throwErrorU` and once for `catchErrorU`):
+we can check that in the original example with `lift` only the instance that keeps `ExceptT` is used (once for `throwErrorU` and once for `catchErrorU`):
 
 ```
 >>> runExceptTApp testApp1
@@ -364,7 +364,7 @@ performed some action
 ()
 ```
 
-And we can drop `hoist lift` from the other example as well:
+And we can drop `hoist lift` from the other example too:
 
 ```haskell
 newtype AppT m a = AppT
@@ -381,7 +381,7 @@ testAppT = throwErrorU () `catchErrorU` \() -> do
     printM ()
 ```
 
-It's important to stress that `App` gets peeled to itself and `AppT` gets peeled to itself as well. This is because whatever our main monad is, we want to be able to feed actions running in that monad to `forkU`, so that we don't lose the benefit of `unliftio` discussed in the beginning of the post.
+It's important to stress that `App` gets peeled to itself and `AppT` gets peeled to itself as well. This is because whatever our main monad is, we want to be able to feed actions running in that monad to `forkU`, so that we don't lose the benefits of `unliftio` discussed in the beginning of the post.
 
 Note that the body of `testAppT` is literally the same as the one of `testApp2`. Given that, we can generalize both the examples to (the comments are constraints required by each individual line)
 
@@ -394,12 +394,12 @@ testAppG
        ) => m ()
 testAppG = throwErrorU () `catchErrorU` \() -> do  -- MonadUnliftPeel m b m, MonadError () b
     _ <-
-        forkU $                                    -- MonadUnliftPeel p IO m
-            printM ()                              -- MonadIO p
+        forkU                                      -- MonadUnliftPeel p IO m
+            someAction                             -- SomeAction p
     printM ()                                      -- MonadIO m
 ```
 
-(Note how `m` gets peeled to itself in the first `MonadUnliftPeel` constraint ([1]) and the same @m@ gets peeled to @p@ in the second one ([2]). This is how we handle this requirement for `m` to support both the keeping-`ExceptT` and the dropping-`ExceptT` instances)
+(Note how `m` gets peeled to itself in the first `MonadUnliftPeel` constraint ([1]) and the same `m` gets peeled to `p` in the second one ([2]). This is how we handle this requirement for `m` to support both the keeping-`ExceptT` and the dropping-`ExceptT` instances)
 
 And we can instantiate the general definition at both the concrete types:
 
@@ -484,7 +484,7 @@ testAppG
     => m ()
 testAppG = throwErrorU () `catchErrorU` \() -> do  -- MonadUnlift b m, MonadError () b
     _ <-
-        liftP $                                    -- MonadPeel p m,
+        liftP $                                    -- MonadPeel p m
             forkU $                                -- MonadUnlift IO p
                 someAction                         -- SomeAction p
     printM ()                                      -- MonadIO m
@@ -504,4 +504,6 @@ without having an overly general three-parameter type class requiring overlappin
 
 ## Conclusions
 
-We've considered various ways of generalizing the `MonadUnliftIO` class. Nothing described has been tested in any kind of real-world environment, but the ideas kinda seem promising.
+We've considered various ways of generalizing the `MonadUnliftIO` class. Nothing described here has been tested in any kind of real-world environment, but the ideas kinda seem promising.
+
+If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).
