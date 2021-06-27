@@ -176,7 +176,7 @@ instance MonadUnliftable m => MonadUnliftable (ExceptT e m) where
     withUnlift k = ExceptT $ withUnlift $ \unlift -> runExceptT $ k $ mapExceptT unlift
 ```
 
-The instance stipulates that `ExceptT` can't be removed from the monadic stack for the purposes of unlifting and therefore the base monad has to contain it. Note that it's still possible to discharge, say, `ReaderT` underneath `ExceptT` due to the recursion in the instance, even though `ExceptT` is not dischargeable itself.
+The instance states that `ExceptT` can't be removed from the monadic stack for the purposes of unlifting and therefore the base monad has to contain it. Note that it's still possible to discharge, say, `ReaderT` underneath `ExceptT` due to the recursion in the instance, even though `ExceptT` is not dischargeable itself.
 
 We can use the generalized class to provide unlifting versions of `throwError` and `catchError`:
 
@@ -262,7 +262,7 @@ class (Monad b, Monad m) => MonadUnliftPeel p b m | m b -> p, m p -> b where
 
 Here the inner monad (`p`) is allowed to differ from the outer monad (`m`). The idea is that `p` is either equal to `m` like before or is some "peeled" version of `m` where we drop some parts of the outer stack for the inner computation, so that the type class machinery can do all the lifting for us.
 
-The two basic instances are like before:
+The two core instances are like before:
 
 ```haskell
 instance MonadUnliftPeel IO IO IO where
@@ -341,6 +341,7 @@ Using a runner for `ExceptT () App`
 ```haskell
 runExceptTApp :: ExceptT () App a -> IO ()
 runExceptTApp = void . flip runReaderT () . unApp . runExceptT
+```
 
 we can check that in the original example with `lift` only the instance that keeps 'ExceptT' is used (once for `throwErrorU` and once for `catchErrorU`):
 
@@ -428,7 +429,7 @@ with the usual recover-the-corresponding-multi-parameter-type-class-via-a-type-e
 type MonadPeel p m = (MonadPeelable m, Peel m ~ p)
 ```
 
-`MonadPeelable` is not just `MonadBase`, it's intended to be the dual of `MonadUnliftable` (I've managed to successfully avoid calling it `MonadCounliftable` and `MonadLiftable` would be too general of a name).
+`MonadPeelable` is not just [`MonadBase`](https://hackage.haskell.org/package/transformers-base-0.4.5.2/docs/Control-Monad-Base.html#t:MonadBase), it's intended to be the dual of `MonadUnliftable` (I've managed to successfully avoid calling it `MonadCounliftable` and `MonadLiftable` would be too general of a name).
 
 `MonadUnliftable` discharges `ReaderT` and `AppT` and so `MonadPeelable` has to keep them:
 
