@@ -131,6 +131,15 @@ which allows us to recover the multi-parameter version via
 ```haskell
 type MonadUnlift b m = (MonadUnliftable m, Unlift m ~ b)
 ```
+**UPDATE**: note that it could also be
+
+```haskell
+class (Monad b, Monad m, b ~ Unlift m) => MonadUnlift b m where
+    type Unlift m :: * -> *
+    withUnlift :: ((forall a. m a -> b a) -> b r) -> m r
+```
+
+instead of `MonadUnliftable` as [suggested](https://github.com/effectfully-ou/sketches/issues/2) by [**treeowl**](https://github.com/treeowl), which is probably even better, but the post was originally written with `MonadUnliftable` and so the rest still talks about the original version of the class.
 
 `MonadUnliftable`, being a generalization of `MonadUnliftIO`, supports the core `IO` and `ReaderT` instances:
 
