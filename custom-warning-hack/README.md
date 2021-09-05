@@ -28,7 +28,7 @@ That works alright, but extending `D` with an additional constructor, say,
   | C2 Word
 ```
 
-won't trigger any warning about `parseD` not handling this new constructor. Which can be troubling, especially when someone contributes to your codebase and doesn't even know there's a parser to extend. And the same applies to deserialization, decoding from JSON etc. So that problem does appear in the wild. Tests should normally catch it, but proper tests are not always there and staring at failed tests and trying to make sense of what just happened is more expensive than preveting them from failing in the first place.
+won't trigger any warning about `parseD` not handling this new constructor. Which can be troubling, especially when someone contributes to your codebase and doesn't even know there's a parser to extend. And the same applies to deserialization, decoding from JSON etc. So that problem does appear in the wild. Tests should normally catch it, but proper tests are not always there and staring at failed tests and trying to make sense of what just happened is more expensive than preventing them from failing in the first place.
 
 Ideally, it would be nice to have some kind of cocoverage checking, so that we could write something like
 
@@ -64,7 +64,7 @@ instance Warning (FIX_ME_BUT_FIRST IMPLEMENT_PARSING_FOR D) where
 Now adding the `C2` constructor to `D` gives us the following warning when type checking `warning`:
 
 ```
-<...>/custom-warning-hack/src/Main.hs:34:3: warning: [-Wincomplete-patterns]
+.../custom-warning-hack/src/Main.hs:34:3: warning: [-Wincomplete-patterns]
     Pattern match(es) are non-exhaustive
     In an equation for ‘warning’:
         Patterns not matched: FIX_ME_BUT_FIRST IMPLEMENT_PARSING_FOR (C2 _)
@@ -73,6 +73,6 @@ Now adding the `C2` constructor to `D` gives us the following warning when type 
    |   ^
 ```
 
-Making `warning` a method of a type class ensures that you won't get an unused function warning and it's also nice to pollute the global namespace with a bit fewer redundant names and instead share the same name for all custom warnings.
+Making `warning` a method of a type class ensures that you won't get an unused function warning and it's also nice to pollute the global namespace with a bit fewer redundant names and instead share the same name for all functions triggering custom warnings.
 
 Overall, far from perfect, but better than nothing.
