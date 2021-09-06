@@ -80,4 +80,4 @@ Overall, far from perfect, but better than nothing.
 **UPDATE** A number of people have [commented](https://www.reddit.com/r/haskell/comments/pi4hl3/a_custom_warning_hack) on this post suggesting alternative ideas:
 
 1. instead of using a type class method, one can simply have a local function whose name starts with `_` and a comment above it requesting to update something. I think I still prefer for some kind of suggestion to appear in the warning itself, but YMMV
-2. there exist packages solving this exact problem (differently): [`surjective`](https://hackage.haskell.org/package/surjective), [`exhaustive`](https://hackage.haskell.org/package/exhaustive), [`sum-totality`](https://github.com/aaronallen8455/sum-totality)
+2. there exist packages solving this exact problem (all in their own way): [`surjective`](https://hackage.haskell.org/package/surjective), [`exhaustive`](https://hackage.haskell.org/package/exhaustive), [`sum-totality`](https://github.com/aaronallen8455/sum-totality)
