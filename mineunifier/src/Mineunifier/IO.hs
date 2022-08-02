@@ -21,8 +21,6 @@ import GHC.TypeLits
 import Data.Type.Equality
 
 class Parse source result
-instance result ~~ '[] => Parse '[] result
-instance (rs ~~ (r ': rs'), Parse s r, Parse ss' rs') => Parse (s ': ss') rs
 instance                        Parse "?" c
 instance c ~~ 'X             => Parse "x" c
 instance c ~~ 'N (FromNat 0) => Parse "0" c
@@ -34,24 +32,51 @@ instance c ~~ 'N (FromNat 5) => Parse "5" c
 instance c ~~ 'N (FromNat 6) => Parse "6" c
 instance c ~~ 'N (FromNat 7) => Parse "7" c
 instance c ~~ 'N (FromNat 8) => Parse "8" c
+instance result ~~ '[] => Parse '[] result
+instance (Parse s r, Parse ss' rs', rs ~~ (r ': rs')) => Parse (s ': ss') rs
 
-class ShowField a where
-    showField :: String
+class DisplayGamey a where
+    displayGamey :: String
 
-instance ShowField 'X where
-    showField = "x"
+instance DisplayGamey 'X where
+    displayGamey = "x"
 
-instance KnownNat (ToNat m) => ShowField ('N m) where
-    showField = show . natVal $ Proxy @(ToNat m)
+instance KnownNat (ToNat m) => DisplayGamey ('N m) where
+    displayGamey = show . natVal $ Proxy @(ToNat m)
 
-instance ShowField '[] where
-    showField = ""
+instance DisplayGamey '[] where
+    displayGamey = ""
 
-instance (ShowField el, ShowField row) => ShowField (el : row :: [Cell]) where
-    showField = showField @el ++ " " ++ showField @row
+instance (DisplayGamey el, DisplayGamey row) => DisplayGamey (el : row :: [Cell]) where
+    displayGamey = displayGamey @el ++ " " ++ displayGamey @row
 
-instance ShowField '[[]] where
-    showField = ""
+instance DisplayGamey '[[]] where
+    displayGamey = ""
 
-instance (ShowField row, ShowField rows) => ShowField (row : rows :: [[Cell]]) where
-    showField = showField @row ++ "\n" ++ showField @rows
+instance (DisplayGamey row, DisplayGamey rows) => DisplayGamey (row : rows :: [[Cell]]) where
+    displayGamey = displayGamey @row ++ "\n" ++ displayGamey @rows
+
+displayBoard :: forall input result. (Parse input result, DisplayGamey result) => String
+displayBoard = displayGamey @result
+
+-- >>> :set -XDataKinds
+-- >>> :set -XTypeApplications
+-- >>> putStrLn $ displayBoard @('[ ["1", "1", "0"], ["x", "1", "0"] ])
+-- 1 1 0
+-- x 1 0
+-- >>> putStrLn $ displayBoard @('[ ["1", "1", "0"], ["?", "1", "0"] ])
+-- <interactive>:83:13: error:
+--     • Ambiguous type variable ‘r0’ arising from a use of ‘displayBoard’
+--       prevents the constraint ‘(DisplayGamey r0)’ from being solved.
+--       Probable fix: use a type annotation to specify what ‘r0’ should be.
+--       These potential instances exist:
+--         instance [safe] KnownNat (ToNat m) => DisplayGamey ('N m)
+--           -- Defined at /tmp/danteA6Aax6.hs:44:10
+--         instance [safe] DisplayGamey 'X
+--           -- Defined at /tmp/danteA6Aax6.hs:41:10
+--     • In the second argument of ‘($)’, namely
+--         ‘displayBoard @('[["1", "1", "0"], ["?", "1", "0"]])’
+--       In the expression:
+--         putStrLn $ displayBoard @('[["1", "1", "0"], ["?", "1", "0"]])
+--       In an equation for ‘it’:
+--           it = putStrLn $ displayBoard @('[["1", "1", "0"], ["?", "1", "0"]])

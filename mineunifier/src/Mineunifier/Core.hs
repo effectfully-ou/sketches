@@ -18,29 +18,29 @@ import GHC.TypeLits
 
 data Peano = Z | S Peano
 
-type family ToNat (m :: Peano) :: Nat where
-    ToNat 'Z     = 0
-    ToNat ('S m) = ToNat m + 1
-
 type family FromNat (n :: Nat) :: Peano where
     FromNat 0 = 'Z
     FromNat n = 'S (FromNat (n - 1))
 
+type family ToNat (m :: Peano) :: Nat where
+    ToNat 'Z     = 0
+    ToNat ('S m) = ToNat m + 1
+
 --------------------
 
 data Cell
-    = N Peano
-    | X
+    = X
+    | N Peano
 
 --------------------
 
 class Rule (n :: a) (c :: Cell) (p :: a)
 
-instance {-# INCOHERENT #-} n ~ p    => Rule n ('N m) p
 instance {-# INCOHERENT #-} n ~ 'S p => Rule n 'X     p
+instance {-# INCOHERENT #-} n ~ p    => Rule n ('N m) p
 
-instance {-# INCOHERENT #-} (c ~ 'N m, p ~ 'Z) => Rule 'Z      c p
 instance {-# INCOHERENT #-} (n' ~ 'Z, c ~ 'X)  => Rule ('S n') c 'Z
+instance {-# INCOHERENT #-} (c ~ 'N m, p ~ 'Z) => Rule 'Z      c p
 
 instance {-# INCOHERENT #-} (p ~ 'S p', Rule ('S n') c p') => Rule ('S ('S n')) c p
 instance {-# INCOHERENT #-} (n ~ 'S n', Rule n'      c p') => Rule n            c ('S p')
