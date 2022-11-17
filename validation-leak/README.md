@@ -142,5 +142,3 @@ and `Fine.Validation` indeed doesn't leak:
 
   Productivity 100.0% of total user, 92.4% of total elapsed
 ```
-
-If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

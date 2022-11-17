@@ -116,5 +116,3 @@ Full code is available at [`src/Main.hs`](./src/Main.hs).
 Thanks to [Artyom Kazak](https://github.com/neongreen) for introducing me to the problem.
 
 See [this comment](https://www.reddit.com/r/haskell/comments/nomdit/custom_type_equality_errors/h037mf6) by [Adam Gundry](https://github.com/adamgundry) to understand how this trick is more or less reliable.
-
-If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

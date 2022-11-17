@@ -143,5 +143,3 @@ Now whenever I want to jump into `base` or `lens` from any Haskell project, I hi
 ## Conclusions
 
 Setting up all of this is tiresome, but now that I've been using this machinery for a few months, I can't think of not having jump-to-definition working in lots of important cases.
-
-If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

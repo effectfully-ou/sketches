@@ -52,5 +52,3 @@ Speaking generally, **it is obviously good to have laws**, but it is not obvious
 but I'm not yet convinced that supposed laws for monadic lenses are of the same importance, so I do not agree currently with the following sentiment:
 
 > the above situation [no laws for monadic lenses] ultimately killed any expression of a "monadic lens."
-
-If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

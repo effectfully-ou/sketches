@@ -347,5 +347,3 @@ class (Has r n (FldTy r n), r ~ UpdTy r n (FldTy r n))
 ```
 
 That has unidirectional type inference and with the technique described above we can make it bidirectional. Also this should solve the phantom arguments problem described in the wiki, but I didn't check. I guess we'll need to move `DeterminesShapeOf` to the `Upd` type class itself.
-
-If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

@@ -126,5 +126,3 @@ Moral of the story: if there's laziness exposed to the user, all laws are off. W
 (note the `(3,False)` in the final line). I.e. if a part of `lastIsFalse` is forced at some point, it's going to stay the same if `lastIsFalse` is used again in the same program or GHCi session (all previous examples were separate GHCi sessions) due to`lastIsFalse` being a [CAF](https://stackoverflow.com/questions/8330756/what-are-super-combinators-and-constant-applicative-forms).
 
 Don't do any of that at home.
-
-If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

@@ -514,5 +514,3 @@ without having an overly general three-parameter type class requiring overlappin
 ## Conclusions
 
 We've considered various ways of generalizing the `MonadUnliftIO` class. Nothing described here has been tested in any kind of real-world environment, but the ideas kinda seem promising.
-
-If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

@@ -146,5 +146,3 @@ But lenses in `monad-var` are not quite satifactory. Here are the problems:
  - How are we able to both write and modify a variable using a single setter? That's because we always read the contents of a variable before writing anything to it, so even though `v & _Var .~ x` doesn't need to call `read`, it calls and ignores the result.
 
 And there is an encoding that seems to solve all these problems. It uses profunctor optics, so you'll like it. Stay tuned.
-
-If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

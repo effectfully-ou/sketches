@@ -69,5 +69,3 @@ This is a completely new scenario: previously [2] would execute iff `putMVar` su
 So what happens is that `putMVar` does not fill the entire "exception-sensitive box" that `restore` creates within its scope. There's that tiny space between the internal `putMVar` and the enclosing `restore` where an async exception can be raised. So beware.
 
 **UPDATE**: see how [`dejafu`](http://hackage.haskell.org/package/dejafu) (a library for testing concurrent Haskell) can detect the new scenario and elaborate on it in [this comment](https://www.reddit.com/r/haskell/comments/nntfui/its_not_a_noop_to_unmask_an_interruptible/gzwtayp).
-
-If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).

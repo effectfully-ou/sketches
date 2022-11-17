@@ -424,5 +424,3 @@ So yeah, by introducing caching you risk to blow up memory, by not introducing i
 - Haskell docs often fail to elaborate on issues related to operational semantics (how things evaluate) as opposed to denotational semantics (what they evaluate to).
 - [`nothunks`](https://hackage.haskell.org/package/nothunks) is amazing.
 - You need to be careful with CAFs or anything that can potentially become one.
-
-If you liked the post and appreciate the effort, consider [sponsoring](https://github.com/sponsors/effectfully-ou) this blog (starts from 1$).
