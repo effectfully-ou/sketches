@@ -1,9 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -47,13 +44,10 @@ instance KnownNat (ToNat m) => DisplayGamey ('N m) where
 instance DisplayGamey '[] where
     displayGamey = ""
 
-instance (DisplayGamey el, DisplayGamey row) => DisplayGamey (el : row :: [Cell]) where
+instance (DisplayGamey el, DisplayGamey row) => DisplayGamey (el ': row :: [Cell]) where
     displayGamey = displayGamey @el ++ " " ++ displayGamey @row
 
-instance DisplayGamey '[[]] where
-    displayGamey = ""
-
-instance (DisplayGamey row, DisplayGamey rows) => DisplayGamey (row : rows :: [[Cell]]) where
+instance (DisplayGamey row, DisplayGamey rows) => DisplayGamey (row ': rows :: [[Cell]]) where
     displayGamey = displayGamey @row ++ "\n" ++ displayGamey @rows
 
 displayBoard :: forall input result. (Parse input result, DisplayGamey result) => String
@@ -65,15 +59,15 @@ displayBoard = displayGamey @result
 -- 1 1 0
 -- x 1 0
 -- >>> putStrLn $ displayBoard @('[ ["1", "1", "0"], ["?", "1", "0"] ])
--- <interactive>:83:13: error:
+-- <interactive>:76:13: error:
 --     • Ambiguous type variable ‘r0’ arising from a use of ‘displayBoard’
 --       prevents the constraint ‘(DisplayGamey r0)’ from being solved.
 --       Probable fix: use a type annotation to specify what ‘r0’ should be.
 --       These potential instances exist:
 --         instance [safe] KnownNat (ToNat m) => DisplayGamey ('N m)
---           -- Defined at /tmp/danteA6Aax6.hs:44:10
+--           -- Defined at /tmp/danteekL61x.hs:41:10
 --         instance [safe] DisplayGamey 'X
---           -- Defined at /tmp/danteA6Aax6.hs:41:10
+--           -- Defined at /tmp/danteekL61x.hs:38:10
 --     • In the second argument of ‘($)’, namely
 --         ‘displayBoard @('[["1", "1", "0"], ["?", "1", "0"]])’
 --       In the expression:

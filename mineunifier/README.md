@@ -78,7 +78,7 @@ instance Parse "?" c
 
 It says that if the input cell is `?` then the result stays unconstrained. `c` is going to be instantiated later by the solver (unless the solver fails to find a solution for the board).
 
-If in the input is a mine, then so is the output:
+If the input is a mine, then so is the output:
 
 ```haskell
 instance c ~~ 'X => Parse "x" c
@@ -86,7 +86,7 @@ instance c ~~ 'X => Parse "x" c
 
 `~~` is a [heterogeneous](https://ryanglscott.github.io/2021/09/06/leibniz-equality-in-haskell-part-2-heterogeneous-equality) equality constraint. If we used `~`, then instance resolution would only pick this instance for `c` already having kind `Cell`, while we want the instance to be chosen regardless of whether there's anything known about `c`. I.e. it's the same situation as the one described in [The constraint trick for instances](https://chrisdone.com/posts/haskell-constraint-trick) except here the kind level is involved in addition to the type level.
 
-
+The highest value of a cell storing the number of mines adjacent to it is 8 on a 2D plane, hence we have these 9 instances (the ones in the middle are omitted for brevity):
 
 ```haskell
 instance c ~~ 'N (FromNat 0) => Parse "0" c
@@ -95,97 +95,69 @@ instance c ~~ 'N (FromNat 1) => Parse "1" c
 instance c ~~ 'N (FromNat 8) => Parse "8" c
 ```
 
-
-
-This instance handles parsing of lists:
+We have lists of cells (a row) and lists of lists of cells (the board) and we handle both of these kinds of lists with only two instances:
 
 ```haskell
-instance (Parse s r, Parse ss' rs', rs ~ (r ': rs')) => Parse (s ': ss') rs
+instance result ~~ '[] => Parse '[] result
+instance (Parse s r, Parse ss' rs', rs ~~ (r ': rs')) => Parse (s ': ss') rs
 ```
 
-We have lists of cells (a row) and lists of lists of cells (the board) and we handle both of these kinds of lists with a single instance. The `Parse s r` and the `Parse ss' rs'` parts are straightforward: they say that in order to parse a list one has to parse the head and the tail of that list. The last constraint is `rs ~ (r ': rs')` and it says that once both the head and the tail are parsed we can assemble them into the resulting list `rs`.
+The former instance says that if the input is an empty list, then so is the output.
 
+In the latter instance the `Parse s r` and the `Parse ss' rs'` parts are straightforward: they say that in order to parse a list one has to parse the head and the tail of that list. The last constraint is `rs ~~ (r ': rs')` and it says that once both the head and the tail are parsed we can assemble them into the resulting list `rs`.
 
-
-
-
-instance result ~~ '[] => Parse ('[] result
-instance (rs ~~ (r ': rs'), Parse s r, Parse ss' rs') => Parse (s ': ss') rs
-instance                        Parse "?" c
-instance c ~~ 'X             => Parse "x" c
-instance c ~~ 'N (FromNat 0) => Parse "0" c
-instance c ~~ 'N (FromNat 1) => Parse "1" c
-instance c ~~ 'N (FromNat 2) => Parse "2" c
-instance c ~~ 'N (FromNat 3) => Parse "3" c
-instance c ~~ 'N (FromNat 4) => Parse "4" c
-instance c ~~ 'N (FromNat 5) => Parse "5" c
-instance c ~~ 'N (FromNat 6) => Parse "6" c
-instance c ~~ 'N (FromNat 7) => Parse "7" c
-instance c ~~ 'N (FromNat 8) => Parse "8" c
-
-We'll need a type class for pretty-printing gamey stuff:
+That concludes parsing. We also need the opposite, pretty-printing. We can get away with a single type class again:
 
 ```haskell
 class DisplayGamey a where
     displayGamey :: String
 ```
 
-Having some straightforward instances:
+And the instances are some boring boilerplate:
 
 ```haskell
 instance DisplayGamey 'X where
     displayGamey = "x"
 
+-- 'KnownNat' allows us to demote a type-level number to the term level, so that we can render it.
 instance KnownNat (ToNat m) => DisplayGamey ('N m) where
     displayGamey = show . natVal $ Proxy @(ToNat m)
 
+-- An empty list is rendered as an empty string regardless of the kind of the list.
 instance DisplayGamey '[] where
     displayGamey = ""
 
+-- Cells are separated with spaces in a row.
 instance (DisplayGamey el, DisplayGamey row) => DisplayGamey (el : row :: [Cell]) where
     displayGamey = displayGamey @el ++ " " ++ displayGamey @row
 
-instance DisplayGamey '[[]] where
-    displayGamey = ""
-
+-- Rows are separated with newlines in the board.
 instance (DisplayGamey row, DisplayGamey rows) => DisplayGamey (row : rows :: [[Cell]]) where
     displayGamey = displayGamey @row ++ "\n" ++ displayGamey @rows
 ```
 
-we can pretty-print a board
+It only remains to combine parsing and pretty-printing:
+
+```haskell
+displayBoard :: forall input result. (Parse input result, DisplayGamey result) => String
+displayBoard = displayGamey @result
+```
+
+for us to look at an example:
+
+```
+>>> :set -XDataKinds
+>>> :set -XTypeApplications
+>>> putStrLn $ displayBoard @('[ ["1", "1", "0"], ["x", "1", "0"] ])
+1 1 0
+x 1 0
+```
+
+`displayBoard` takes a list of lists of type-level strings, parses it at the type level using the `Parse` type class and pretty-prints the result using the `DisplayGamey` type class.
 
 
 
 
-
-
-
-
-
-showParsed :: forall input result. (Parse input result, ShowField result) => String
-showParsed = showField @result
-
--- >>> :set -XDataKinds
--- >>> :set -XTypeApplications
--- >>> putStrLn $ showParsed @('[ ["1", "1", "0"], ["x", "1", "0"] ])
--- 1 1 0
--- x 1 0
--- >>> putStrLn $ showParsed @('[ ["1", "1", "0"], ["?", "1", "0"] ])
--- <interactive>:29:13: error:
---     • Ambiguous type variable ‘r0’ arising from a use of ‘showParsed’
---       prevents the constraint ‘(ShowField r0)’ from being solved.
---       Probable fix: use a type annotation to specify what ‘r0’ should be.
---       These potential instances exist:
---         instance [safe] KnownNat (ToNat m) => ShowField ('N m)
---           -- Defined at /tmp/danteA6Aax6.hs:44:10
---         instance [safe] ShowField 'X
---           -- Defined at /tmp/danteA6Aax6.hs:41:10
---     • In the second argument of ‘($)’, namely
---         ‘showParsed @('[["1", "1", "0"], ["?", "1", "0"]])’
---       In the expression:
---         putStrLn $ showParsed @('[["1", "1", "0"], ["?", "1", "0"]])
---       In an equation for ‘it’:
---           it = putStrLn $ showParsed @('[["1", "1", "0"], ["?", "1", "0"]])
 
 
 
