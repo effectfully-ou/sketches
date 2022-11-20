@@ -272,25 +272,55 @@ This concludes the main part of the algorithm.
 
 ## Additional mechanics
 
+Clicking on a cell in a regular version of Minesweeper either terminates the game (if the cell contained a mine) or reveals the number of mines in the neighbours of the cell. We'll implement both of these mechanics as the following class:
 
-
-
-
-```
+```haskell
 class Reveal (answer :: a) (puzzle :: a)
 instance answer ~ 'X   => Reveal answer 'X
 instance answer ~ 'N p => Reveal answer ('N p)
 instance answer ~ '[]  => Reveal answer '[]
 instance (as ~ (a ': as'), Reveal a p, Reveal as' ps') => Reveal as (p ': ps')
+```
 
+Here `answer` is a fully elaborated board (each its cell is either a mine or a number) and `puzzle` is a board that we task GHC to solve (some cells may be unknown, i.e. parsed from `"?"`). We use `answer` to check that GHC solved `puzzle` correctly.
+
+Semantically, `Reveal answer puzzle` is the same thing as `answer ~ puzzle` (a simple proof by induction), however operationally it's a very different thing. Note that we always match on `puzzle`, thus if GHC doesn't know if a cell is a mine or a number, it won't pick any instance until it figures out what the cell is (which may never happen, eventually resulting in a type error). With `answer ~ puzzle` GHC would be able to use `answer` to solve `puzzle`, which would defeat the whole purpose of the game -- we want GHC to play it without cheating by looking at the answer!
+
+In other words, a `Reveal answer puzzle` constraint ensures that the puzzle is solved correctly without revealing the answer to GHC prematurely. For example if GHC determines that some cell is a number, but it's in fact a mine, then we get an error when this instance is picked:
+
+```hasell
+instance answer ~ 'N p => Reveal answer ('N p)
+```
+
+since the expected `answer` (a mine, i.e. an `'X`) doesn't unify with an `'N`.
+
+We do however want to reveal parts of the answer as GHC advances through the board, namely the exact number content of each cell that GHC has determined to be some number and definitely not a mine. This behavior is implemented by the instance for `'N` above:
+
+```haskell
+instance answer ~ 'N p => Reveal answer ('N p)
+```
+
+Note how we don't match on `p` iteratively in this instance to conceal `answer` until all of `p` is known replicating the previously described logic of `Reveal`. Instead we specify that as long as it's known that the content of a cell is some `'N p`, it's fine to look up into the `answer` to get the value of `p` if it's not known and check it if it's known.
+
+Finally, when you play some regular version of Minesweeper, you're given an exact number of mines to allocate on the board, so we need to replicate this functionality too. Counting the number of mines is trivial:
+
+```haskell
 type family CountXs (a :: k) :: Nat where
     CountXs 'X        = 1
     CountXs (y ': ys) = CountXs y + CountXs ys
     CountXs _         = 0
+```
 
+It only remains to reveal to GHC that the number of mines in the `puzzle` is equal to the number of mines in the `answer`, which we can do via by putting the latter into a spurious cell that is adjacent to all cells in the `puzzle`.
+
+Combining `Reveal` with this trick gives us the final definition of the `Verify` type class that checks solutions figured out by GHC without revealing the expected answer fully (but with revealing those parts of it that are supposed to be revealed):
+
+```haskell
 class Verify (answer :: [[Cell]]) (puzzle :: [[Cell]])
 instance
     ( Reveal answer puzzle
     , NeighbsToRules ('N (FromNat (CountXs answer))) (Concat puzzle)
     ) => Verify answer puzzle
 ```
+
+## Tests

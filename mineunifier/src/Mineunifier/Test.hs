@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
