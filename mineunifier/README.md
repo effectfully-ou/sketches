@@ -155,52 +155,128 @@ x 1 0
 
 `displayBoard` takes a list of lists of type-level strings, parses it at the type level using the `Parse` type class and pretty-prints the result using the `DisplayGamey` type class.
 
+## The algorithm
 
+In order to find a solution for the given board we're going to create a set of equations and let GHC solve it. For that we'll turn each cell on the board into a `Constraint` representing a possibly empty set of equations. In order to produce this set we'll need to look not only at the cell, but also at its neighbours, which suggests the following definition:
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class NeighbsToRulesGo (n :: a) (nb :: Cell) (nbs :: [Cell])
-instance Rule n nb 'Z => NeighbsToRulesGo n nb '[]
-instance (Rule n nb p, NeighbsToRulesGo p nb' nbs) => NeighbsToRulesGo n nb (nb' ': nbs)
-
+```haskell
 type family NeighbsToRules (c :: Cell) (nbs :: [Cell]) :: Constraint where
-    NeighbsToRules 'X     _           = ()
-    NeighbsToRules ('N n) '[]         = n ~ 'Z
-    NeighbsToRules ('N n) (nb ': nbs) = NeighbsToRulesGo n nb nbs
+    NeighbsToRules 'X     _           = ()                         -- [1]
+    NeighbsToRules ('N n) '[]         = n ~ 'Z                     -- [2]
+    NeighbsToRules ('N n) (nb ': nbs) = NeighbsToRulesGo n nb nbs  -- [3]
+```
 
+[1] says that if we're looking at a bomb, we can't get any info about the neighbours at this point, i.e. we can't tell if they should be bombs or numbers.
 
+[2] says that if we're looking at a number and there are no adjacent cells, then this number must be zero, i.e. there's no bombs around. This handles the case when the entire row contains only one cell that happens to be a number (either by being a number in the input or by GHC figuring out it should be a number using the algorithm we're currently devising).
 
+[3] says that if we're looking at a number and there's a non-zero amount of adjacent cells, then we defer to the `NeighbsToRulesGo` type class taking three arguments and recursing on the last of them:
 
+```haskell
+class NeighbsToRulesGo (n :: Peano) (nb :: Cell) (nbs :: [Cell])
+instance Rule n nb 'Z => NeighbsToRulesGo n nb '[]
+instance (Rule n nb n', NeighbsToRulesGo n' nb' nbs) => NeighbsToRulesGo n nb (nb' ': nbs)
+```
+
+- the first argument of the type class is the number of remaining bombs in all the remaining neighbours of the original cell `c`
+- the second argument is the next neighbour
+- the third argument is all other remaining neighbours
+
+Initially `NeighbsToRulesGo` is instantiated in the definition of `NeighbsToRules` with:
+
+- the number content of the original cell `c`
+- its first neighbour
+- a list of all the other neighbours
+
+At each recursive step we create a `Rule n nb n'` constraint, which takes three arguments:
+
+- the number of remaining bombs
+- a cell adjacent to `c`
+- the new number of remaining bombs after accounting for the cell from the previous bullet
+
+This is the central idea. At each step we either decrement the number of bombs remaining in cells adjacent to `c` (if the neighbour at point is a mine) or keep it the same (if the neighbour at point is a number) and put the result into a new type variable `n'`. We recurse like that on the neighbours of `c` creating a new type variable at each step and relating it to the previous one via the `Rule` type class. By the time we reach the end of the list, i.e. run out of neighbours of `c`, we know that the number of remaining bombs has to be zero, which is what conveyed by the first instance of `NeighbsToRulesGo`.
+
+`Rule` is declared like this:
+
+```haskell
 class Rule (n :: a) (c :: Cell) (p :: a)
+```
 
+The behavior that was just described could be implemented via these two instances:
+
+```haskell
+instance Rule ('S n) 'X     n  -- Mine, so decrement.
+instance Rule n      ('N p) n  -- Number, so keep the same.
+```
+
+however this wouldn't allow us to actually solve anything. As with all the equality constraints we used for parsing, we have to structure `Rule` carefully in order to explicitly drive inference. Hence we turn the two instances into
+
+```haskell
 instance {-# INCOHERENT #-} n ~ 'S p => Rule n 'X     p
 instance {-# INCOHERENT #-} n ~ p    => Rule n ('N m) p
+```
 
+Here instead of requiring `n` to unify with `'S p` in the head of the former instance we do that in its context, so that the instance is picked as soon as it's clear that the neighbour at point is a mine, allowing GHC to reify the old/new remaining numbers of mines accordingly. The latter instance works similarly.
+
+Why `INCOHERENT`, I hear you ask? Well, we know that a mine causes the number of remaining mines to get decremented, but the opposite is also true: if we see that the number of remaining mines got decremented, then the neighbour at point has to be a mine. Which we spell in Haskell like this in the base case of new number of remaining being zero:
+
+```haskell
 instance {-# INCOHERENT #-} (n' ~ 'Z, c ~ 'X)  => Rule ('S n') c 'Z
-instance {-# INCOHERENT #-} (c ~ 'N m, p ~ 'Z) => Rule 'Z      c p
+```
 
+Similarly, if the number of remaining mines is zero, then no mine can occur in the remaining neighbours:
+
+```haskell
+instance {-# INCOHERENT #-} (c ~ 'N m, p ~ 'Z) => Rule 'Z      c p
+```
+
+Those two are the base cases of recursion and we also need steps:
+
+```haskell
 instance {-# INCOHERENT #-} (p ~ 'S p', Rule ('S n') c p') => Rule ('S ('S n')) c p
 instance {-# INCOHERENT #-} (n ~ 'S n', Rule n'      c p') => Rule n            c ('S p')
+```
+
+The former says that no cell can decrement the number of remaining mines by more than one mine and the latter says that no cell can increment the number of remaining mines. Both recurse as appropriate.
+
+The instances are marked with `INCOHERENT`, because there are multiple paths that instance resolution can take when resolving a `Rule` constraint and GHC normally refuses to pick one at random, so we give it an explicit indulgence. We don't care which path is taken in the end, because they all are equivalent due to the set of instances being perfectly coherent.
+
+It only remains to invoke `NeighbsToRules` for each cell (and its neighbours) of the board. Doing that for matrices represented as lists of lists is some awkward (try it yourself!) boilerplate which I'll show for completeness but won't bother explaining, since there's nothing type-level-specific about it:
+
+```haskell
+type family HeadDef z xs where
+    HeadDef z '[]      = z
+    HeadDef _ (x ': _) = x
+
+type family MakeRulesRow ss ps cs ns :: Constraint where
+    MakeRulesRow _  _  '[] _        = ()
+    MakeRulesRow ss ps (c ': cs) ns =
+        ( -- This is where we invoke 'NeighbsToRules' for a cell @c@ and a list of its neighbours.
+          NeighbsToRules c (Take 3 ss ++ Take 2 ps ++ Take 1 cs ++ Take 2 ns)
+        , MakeRulesRow (Take 1 ps ++ '[c] ++ Take 1 ns) (Drop 1 ps) cs (Drop 1 ns)
+        )
+
+type family MakeRulesGo ps (css :: [[Cell]]) :: Constraint where
+    MakeRulesGo _ '[]          = ()
+    MakeRulesGo ps (cs ': css) =
+        ( MakeRulesRow '[] ps cs (HeadDef '[] css)
+        , MakeRulesGo cs css
+        )
+
+type MakeRules result = MakeRulesGo '[] result
+```
+
+Note that the order that the neighbours of a cell come in doesn't matter, since all of them are going to be turned into constraints in the end and constraints are inherently unordered.
+
+This concludes the main part of the algorithm.
+
+## Additional mechanics
 
 
 
 
 
+```
 class Reveal (answer :: a) (puzzle :: a)
 instance answer ~ 'X   => Reveal answer 'X
 instance answer ~ 'N p => Reveal answer ('N p)
@@ -217,3 +293,4 @@ instance
     ( Reveal answer puzzle
     , NeighbsToRules ('N (FromNat (CountXs answer))) (Concat puzzle)
     ) => Verify answer puzzle
+```

@@ -31,29 +31,29 @@ play = putStrLn $ displayGamey @result
 -- >>> play @5
 -- x x
 -- >>> play @6
--- <interactive>:89:2: error:
+-- <interactive>:141:2: error:
 --     • Could not deduce: (NeighbsToRules r0 '[r1],
 --                          NeighbsToRules r1 '[r0])
 --         arising from a use of ‘play’
 --     • In the expression: play @6
 --       In an equation for ‘it’: it = play @6
--- <interactive>:89:2: error:
---     • No instance for (Rule p0 r1 'Z) arising from a use of ‘play’
+-- <interactive>:141:2: error:
+--     • No instance for (Rule n'0 r1 'Z) arising from a use of ‘play’
 --     • In the expression: play @6
 --       In an equation for ‘it’: it = play @6
 -- >>> play @7
 -- x x
 -- x x
 -- >>> play @8
--- <interactive>:91:2: error:
+-- <interactive>:143:2: error:
 --     • Could not deduce: (NeighbsToRules r0 '[r1, r2, 'N ('S 'Z)],
 --                          NeighbsToRules r1 '[r0, r2, 'N ('S 'Z)],
 --                          NeighbsToRules r2 '[r0, r1, 'N ('S 'Z)])
 --         arising from a use of ‘play’
 --     • In the expression: play @8
 --       In an equation for ‘it’: it = play @8
--- <interactive>:91:2: error:
---     • No instance for (Rule p2 r1 p1) arising from a use of ‘play’
+-- <interactive>:143:2: error:
+--     • No instance for (Rule n'2 r1 n'1) arising from a use of ‘play’
 --     • In the expression: play @8
 --       In an equation for ‘it’: it = play @8
 -- >>> play @9

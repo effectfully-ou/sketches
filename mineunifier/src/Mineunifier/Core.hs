@@ -46,9 +46,9 @@ instance {-# INCOHERENT #-} (n ~ 'S n', Rule n'      c p') => Rule n            
 
 --------------------
 
-class NeighbsToRulesGo (n :: a) (nb :: Cell) (nbs :: [Cell])
+class NeighbsToRulesGo (n :: Peano) (nb :: Cell) (nbs :: [Cell])
 instance Rule n nb 'Z => NeighbsToRulesGo n nb '[]
-instance (Rule n nb p, NeighbsToRulesGo p nb' nbs) => NeighbsToRulesGo n nb (nb' ': nbs)
+instance (Rule n nb n', NeighbsToRulesGo n' nb' nbs) => NeighbsToRulesGo n nb (nb' ': nbs)
 
 type family NeighbsToRules (c :: Cell) (nbs :: [Cell]) :: Constraint where
     NeighbsToRules 'X     _           = ()
