@@ -18,8 +18,8 @@ class Game (number :: Nat) where
     type family ToSolve number :: [[Symbol]]
     type family ToCheck number :: [[Cell]] -> Constraint
 
-class Check against puzzle
-instance (Parse against answer, Verify answer puzzle) => Check against puzzle
+class Check preanswer puzzle
+instance (Parse preanswer answer, Verify answer puzzle) => Check preanswer puzzle
 
 instance Game 0 where
     type ToSolve 0 =

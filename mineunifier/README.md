@@ -1,4 +1,4 @@
-# Making GHC play Minesweeper
+# Teaching GHC how to play Minesweeper
 
 Equality constraints are a really powerful feature of GHC. They allow one to
 
@@ -288,7 +288,7 @@ Semantically, `Reveal answer puzzle` is the same thing as `answer ~ puzzle` (a s
 
 In other words, a `Reveal answer puzzle` constraint ensures that the puzzle is solved correctly without revealing the answer to GHC prematurely. For example if GHC determines that some cell is a number, but it's in fact a mine, then we get an error when this instance is picked:
 
-```hasell
+```haskell
 instance answer ~ 'N p => Reveal answer ('N p)
 ```
 
@@ -300,7 +300,7 @@ We do however want to reveal parts of the answer as GHC advances through the boa
 instance answer ~ 'N p => Reveal answer ('N p)
 ```
 
-Note how we don't match on `p` iteratively in this instance to conceal `answer` until all of `p` is known replicating the previously described logic of `Reveal`. Instead we specify that as long as it's known that the content of a cell is some `'N p`, it's fine to look up into the `answer` to get the value of `p` if it's not known and check it if it's known.
+Note how we don't match on `p` iteratively in this instance to conceal `answer` until all of `p` is known replicating the previously described logic of `Reveal`. Instead we specify that as long as it's known that the content of a cell is some `'N p`, it's fine to look up into the `answer` to get the value of `p` if it's not known (and check it if it's known).
 
 Finally, when you play some regular version of Minesweeper, you're given an exact number of mines to allocate on the board, so we need to replicate this functionality too. Counting the number of mines is trivial:
 
@@ -311,9 +311,9 @@ type family CountXs (a :: k) :: Nat where
     CountXs _         = 0
 ```
 
-It only remains to reveal to GHC that the number of mines in the `puzzle` is equal to the number of mines in the `answer`, which we can do via by putting the latter into a spurious cell that is adjacent to all cells in the `puzzle`.
+It only remains to reveal to GHC that the number of mines in the `puzzle` is equal to the number of mines in the `answer`, which we can do by putting the latter into a spurious cell that is adjacent to all cells in the `puzzle`.
 
-Combining `Reveal` with this trick gives us the final definition of the `Verify` type class that checks solutions figured out by GHC without revealing the expected answer fully (but with revealing those parts of it that are supposed to be revealed):
+Combining `Reveal` with this trick gives us the final definition of the `Verify` type class that checks solutions figured out by GHC without revealing the expected answer fully (while revealing those parts of it that are supposed to be revealed):
 
 ```haskell
 class Verify (answer :: [[Cell]]) (puzzle :: [[Cell]])
@@ -324,3 +324,30 @@ instance
 ```
 
 ## Tests
+
+
+```haskell
+class Game (number :: Nat) where
+    type family ToSolve number :: [[Symbol]]
+    type family ToCheck number :: [[Cell]] -> Constraint
+
+class Check preanswer puzzle
+instance (Parse preanswer answer, Verify answer puzzle) => Check preanswer puzzle
+```
+
+```haskell
+instance Game 0 where
+    type ToSolve 0 =
+        '[ '[]
+         ]
+    type ToCheck 0 = Check
+        '[ '[]
+         ]
+```
+
+
+play
+    :: forall number (result :: [[Cell]]).
+       (Parse (ToSolve number) result, MakeRules result, ToCheck number result, DisplayGamey result)
+    => IO ()
+play = putStrLn $ displayGamey @result
