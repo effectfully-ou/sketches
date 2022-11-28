@@ -325,15 +325,38 @@ instance
 
 ## Tests
 
+Next we'll add a type class for tests:
 
 ```haskell
 class Game (number :: Nat) where
     type family ToSolve number :: [[Symbol]]
     type family ToCheck number :: [[Cell]] -> Constraint
+```
 
+A `Game` is a pair of two type families: `ToSolve` is for accessing the puzzle and `ToCheck` is for verifying that the puzzle is solved correctly by GHC. The `number` argument is so that we can have multiple tests and distinguish between them using only a type-level number.
+
+We could've made `ToCheck` return a `[[Symbol]]` like `ToSolve` does, but that would make it possible to accidentally let GHC look into the solution in some inappropriate way (i.e. not via the carefully setup logic of `Verify`), so we don't expose the fully elaborated board from the `Game` type class and instead insist on hardcording the logic of `Verify` right into every implementation of `ToCheck`. We do this via this type class:
+
+```haskell
 class Check preanswer puzzle
 instance (Parse preanswer answer, Verify answer puzzle) => Check preanswer puzzle
 ```
+
+It parses a fully elaborated board with string cells (i.e. `preanswer` is of kind `[[Symbol]]`) into a board with parsed cells (i.e. `answer` is of kind `[[Cell]]`) and then verifies that the `puzzle` is solved correctly by GHC using the `Verify` class.
+
+Finally, we need to assemble all pieces together to define a function that takes a type-level number `n` (to get the `n`th game), makes GHC play that game (by resolving all the constraints that the board gets "compiled" to), checks that the solution aligns with the expected answer and renders the solution:
+
+```haskell
+play
+    :: forall number (result :: [[Cell]]).
+       (Parse (ToSolve number) result, MakeRules result, ToCheck number result, DisplayGamey result)
+    => IO ()
+play = do
+    putStrLn "Solution:"
+    putStrLn $ displayGamey @result
+```
+
+Our zeroth example is an empty board, i.e. a board with no rows at all:
 
 ```haskell
 instance Game 0 where
@@ -343,11 +366,78 @@ instance Game 0 where
     type ToCheck 0 = Check
         '[ '[]
          ]
+
+-- >>> play @0
+-- Solution:
+```
+
+The comment is a GHCi session. Running `play @0` and not getting any type errors ensures that GHC discharges all the constraints and hence successfully solves the board and checks that the solution is equal to the expected answer. Which is why it's safe to print the `"Solution:"` string before getting to printing the actual solution: if there was no solution, then the code would've failed at compile time, hence if the code type checks, we know there's a solution.
+
+Next come a couple of tests for a board with only one cell (either a mine or not):
+
+```haskell
+instance Game 1 where
+    type ToSolve 1 =
+        '[ '["?"]
+         ]
+    type ToCheck 1 = Check
+        '[ '["0"]
+         ]
+
+-- >>> play @1
+-- Solution:
+-- 0
+
+instance Game 2 where
+    type ToSolve 2 =
+        '[ '["?"]
+         ]
+    type ToCheck 2 = Check
+        '[ '["x"]
+         ]
+
+-- >>> play @2
+-- Solution:
+-- x
+```
+
+GHC is able to solve both by making use of the "additional mechanic" of the total number of mines being known. When there's only one mine on the whole board and the puzzle only has one row with one unknown cell, that cell has to be a mine. Similarly, when there are no mines and only one cell in the puzzle, that cell has to be a number and since there are no adjacent cells, the number is `0`.
+
+Let's now look at an example that fails to type check:
+
+```haskell
+instance Game 6 where
+    type ToSolve 6 =
+        '[ '["?", "?"]
+         ]
+    type ToCheck 6 = Check
+        '[ '["x", "1"]
+         ]
+
+-- >>> play @6
+-- <interactive>:262:2: error:
+--     • Could not deduce: (NeighbsToRules r0 '[r1],
+--                          NeighbsToRules r1 '[r0])
+--         arising from a use of ‘play’
+--     • In the expression: play @6
+--       In an equation for ‘it’: it = play @6
+-- <interactive>:262:2: error:
+--     • No instance for (Rule n'0 r1 'Z) arising from a use of ‘play’
+--     • In the expression: play @6
+--       In an equation for ‘it’: it = play @6
 ```
 
 
-play
-    :: forall number (result :: [[Cell]]).
-       (Parse (ToSolve number) result, MakeRules result, ToCheck number result, DisplayGamey result)
-    => IO ()
-play = putStrLn $ displayGamey @result
+```haskell
+instance Game 10 where
+    type ToSolve 10 =
+        '[ '["3", "?", "2"]
+         , '["?", "?", "?"]
+         , '["?", "?", "2"]
+         ]
+    type ToCheck 10 = Check
+        '[ '["3", "x", "2"]
+         , '["x", "x", "3"]
+         , '["x", "x", "2"]
+         ]
+```
