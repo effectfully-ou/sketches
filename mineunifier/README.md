@@ -500,7 +500,7 @@ As you can see there's quite a lot of reasoning involved here. We have to search
 
 As a final example, GHC is able to solve this somewhat sizeable puzzle:
 
-```
+```haskell
 instance Game 18 where
     type ToSolve 18 =
         '[ '["?", "?", "?", "1", "0", "0", "0"]
