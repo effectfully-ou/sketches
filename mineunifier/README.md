@@ -532,7 +532,7 @@ instance Game 18 where
 -- 2 x 2 1 1 1 x
 ```
 
-For more examples see [`Test.hs`](src/Mineunifier/Test.hs)
+For more examples see [`Game.hs`](src/Mineunifier/Game.hs)
 
 ## Conclusions
 
