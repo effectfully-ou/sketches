@@ -109,14 +109,14 @@ instance Game 9 where
 
 instance Game 10 where
     type ToSolve 10 =
-        '[ '["3", "?", "2"]
+        '[ '["2", "?", "2"]
          , '["?", "?", "?"]
-         , '["?", "?", "2"]
+         , '["?", "?", "3"]
          ]
     type ToCheck 10 = Check
-        '[ '["3", "x", "2"]
+        '[ '["2", "3", "2"]
+         , '["x", "x", "x"]
          , '["x", "x", "3"]
-         , '["x", "x", "2"]
          ]
 
 instance Game 11 where

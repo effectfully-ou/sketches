@@ -59,15 +59,15 @@ displayBoard = displayGamey @result
 -- 1 1 0
 -- x 1 0
 -- >>> putStrLn $ displayBoard @('[ ["1", "1", "0"], ["?", "1", "0"] ])
--- <interactive>:76:13: error:
+-- <interactive>:546:13: error:
 --     • Ambiguous type variable ‘r0’ arising from a use of ‘displayBoard’
 --       prevents the constraint ‘(DisplayGamey r0)’ from being solved.
 --       Probable fix: use a type annotation to specify what ‘r0’ should be.
 --       These potential instances exist:
 --         instance [safe] KnownNat (ToNat m) => DisplayGamey ('N m)
---           -- Defined at /tmp/danteekL61x.hs:41:10
+--           -- Defined at /tmp/danteoGX7Hm.hs:41:10
 --         instance [safe] DisplayGamey 'X
---           -- Defined at /tmp/danteekL61x.hs:38:10
+--           -- Defined at /tmp/danteoGX7Hm.hs:38:10
 --     • In the second argument of ‘($)’, namely
 --         ‘displayBoard @('[["1", "1", "0"], ["?", "1", "0"]])’
 --       In the expression:

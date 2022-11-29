@@ -20,6 +20,12 @@ play = do
     putStrLn "Solution:"
     putStrLn $ displayGamey @result
 
+-- Solution:
+-- 1 1 0 0 0
+-- x 2 1 0 0
+-- 3 x 1 0 0
+-- x 3 1 1 1
+-- x 2 0 1 x
 -- >>> :set -XDataKinds
 -- >>> :set -XTypeApplications
 -- >>> play @0
@@ -40,13 +46,13 @@ play = do
 -- Solution:
 -- x x
 -- >>> play @6
--- <interactive>:306:2: error:
+-- <interactive>:561:2: error:
 --     • Could not deduce: (NeighbsToRules r0 '[r1],
 --                          NeighbsToRules r1 '[r0])
 --         arising from a use of ‘play’
 --     • In the expression: play @6
 --       In an equation for ‘it’: it = play @6
--- <interactive>:306:2: error:
+-- <interactive>:561:2: error:
 --     • No instance for (Rule n'0 r1 'Z) arising from a use of ‘play’
 --     • In the expression: play @6
 --       In an equation for ‘it’: it = play @6
@@ -55,14 +61,14 @@ play = do
 -- x x
 -- x x
 -- >>> play @8
--- <interactive>:308:2: error:
+-- <interactive>:563:2: error:
 --     • Could not deduce: (NeighbsToRules r0 '[r1, r2, 'N ('S 'Z)],
 --                          NeighbsToRules r1 '[r0, r2, 'N ('S 'Z)],
 --                          NeighbsToRules r2 '[r0, r1, 'N ('S 'Z)])
 --         arising from a use of ‘play’
 --     • In the expression: play @8
 --       In an equation for ‘it’: it = play @8
--- <interactive>:308:2: error:
+-- <interactive>:563:2: error:
 --     • No instance for (Rule n'2 r1 n'1) arising from a use of ‘play’
 --     • In the expression: play @8
 --       In an equation for ‘it’: it = play @8
@@ -72,9 +78,9 @@ play = do
 -- x 1
 -- >>> play @10
 -- Solution:
--- 3 x 2
+-- 2 3 2
+-- x x x
 -- x x 3
--- x x 2
 -- >>> play @11
 -- Solution:
 -- x 3 3 2

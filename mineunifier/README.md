@@ -403,7 +403,7 @@ instance Game 2 where
 
 GHC is able to solve both by making use of the "additional mechanic" of the total number of mines being known. When there's only one mine on the whole board and the puzzle only has one row with one unknown cell, that cell has to be a mine. Similarly, when there are no mines and only one cell in the puzzle, that cell has to be a number and since there are no adjacent cells, the number is `0`.
 
-Let's now look at an example that fails to type check:
+Let's now look at an example that fails to type check (ignore the fact that test numbers aren't consecutive):
 
 ```haskell
 instance Game 6 where
@@ -427,17 +427,113 @@ instance Game 6 where
 --       In an equation for ‘it’: it = play @6
 ```
 
+The `? ?` puzzle can be solved by both `x 1` and `1 x` and since the right solution is hidden inside of `ToCheck`, GHC doesn't know how to solve the inherently ambiguous puzzle and we get a (badly looking) type error. We could've made the type error readable by employing the [Detecting the undetectable](https://blog.csongor.co.uk/report-stuck-families) trick, but who cares anyway.
+
+Let's now look at an actually interesting example:
 
 ```haskell
 instance Game 10 where
     type ToSolve 10 =
-        '[ '["3", "?", "2"]
+        '[ '["2", "?", "2"]
          , '["?", "?", "?"]
-         , '["?", "?", "2"]
+         , '["?", "?", "3"]
          ]
     type ToCheck 10 = Check
-        '[ '["3", "x", "2"]
+        '[ '["2", "3", "2"]
+         , '["x", "x", "x"]
          , '["x", "x", "3"]
-         , '["x", "x", "2"]
          ]
+
+-- >>> play @10
+-- Solution:
+-- 2 3 2
+-- x x x
+-- x x 3
 ```
+
+There's only one way to solve the puzzle: by first turning
+
+```
+2 ? 2
+? ? ?
+? ? 3
+```
+
+into
+
+
+```
+2 ? 2
+? x x
+? x 3
+```
+
+because both the `2`s have three unknown neighbours and so we can't use them to determine any of the neighbours and the only remaining known cell is `3` in the bottom right corner. That cell has exactly three neighbours, so we know all of them are mines.
+
+With the next step we get to
+
+```
+2 3 2
+? x x
+? x 3
+```
+
+because the only cell that we can use is the top right one having two mines around it, both of which are known at this point, hence the unknown cell has to be a number, which GHC is allowed to look up in the answer (by one of the additional mechanics).
+
+```
+2 3 2
+? x x
+? x 3
+```
+
+Now we can either use the freshly discovered number `3` to determine its only unknown neighbour or we can determine this cell by using the top left one -- either way we get to
+
+```
+2 3 2
+x x x
+? x 3
+```
+
+At which point it only remains to resolve one cell, which we know has to be a mine, since the answer contains 5 mines and that information is available to GHC.
+
+As you can see there's quite a lot of reasoning involved here. We have to search for suitable cells, then come back to previously encountered ones and use those once enough information is unlocked elsewhere etc. Compiling to constraints saves us from the burden of implementing any of that logic. The power of declarative programming!
+
+As a final example, GHC is able to solve this somewhat sizeable puzzle:
+
+```
+instance Game 18 where
+    type ToSolve 18 =
+        '[ '["?", "?", "?", "1", "0", "0", "0"]
+         , '["?", "?", "?", "2", "0", "1", "1"]
+         , '["?", "?", "?", "1", "0", "2", "?"]
+         , '["?", "?", "?", "1", "0", "2", "?"]
+         , '["?", "?", "?", "1", "1", "1", "?"]
+         , '["?", "?", "?", "?", "?", "?", "?"]
+         , '["?", "?", "?", "?", "?", "?", "?"]
+         ]
+    type ToCheck 18 = Check
+        '[ '["0", "1", "x", "1", "0", "0", "0"]
+         , '["1", "3", "3", "2", "0", "1", "1"]
+         , '["1", "x", "x", "1", "0", "2", "x"]
+         , '["1", "2", "2", "1", "0", "2", "x"]
+         , '["1", "1", "1", "1", "1", "1", "1"]
+         , '["x", "2", "2", "x", "1", "1", "1"]
+         , '["2", "x", "2", "1", "1", "1", "x"]
+         ]
+
+-- >>> play @18
+-- Solution:
+-- 0 1 x 1 0 0 0
+-- 1 3 3 2 0 1 1
+-- 1 x x 1 0 2 x
+-- 1 2 2 1 0 2 x
+-- 1 1 1 1 1 1 1
+-- x 2 2 x 1 1 1
+-- 2 x 2 1 1 1 x
+```
+
+For more examples see [`Test.hs`](src/Mineunifier/Test.hs)
+
+## Conclusions
+
+GHC allows one to do some pretty crazy stuff at the type level. Also apparently there exist people who read this far for some reason.
