@@ -18,6 +18,9 @@ extra-source-files:  README.md
 executable type-safe-eDSL-frontend
   hs-source-dirs:      src
   main-is:             Main.hs
+  other-modules:       Common
+                       Unscoped
+                       Scoped
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
   ghc-options:         -Wall
@@ -25,7 +28,6 @@ executable type-safe-eDSL-frontend
                        -Widentities
                        -Wincomplete-record-updates
                        -Wincomplete-uni-patterns
-                       -Wmissing-export-lists
                        -Wmissing-home-modules
                        -Wpartial-fields
                        -Wredundant-constraints
