@@ -78,3 +78,13 @@ serializeR (R _ _)@(R {b, a}) = do
     serializeA a
     serializeB b
 ```
+
+**UPD**: this post was [discussed](https://www.reddit.com/r/haskell/comments/1d9kexm/andpatterns_for_exhaustive_unordered_pattern) on Reddit.
+
+/u/brandonchinn178 [pointed](https://www.reddit.com/r/haskell/comments/1d9kexm/comment/l7ex96u/) out that [this](https://github.com/ghc-proposals/ghc-proposals/pull/436) proposal would address the issue on the language level.
+
+u/Faucelme [pointed](https://www.reddit.com/r/haskell/comments/1d9kexm/comment/l7i5csk/) out that making `serializeR` linear would require consuming all of its fields.
+
+u/enobayram [pointed](https://www.reddit.com/r/haskell/comments/1d9kexm/comment/l7is4v1/) out that the [`safe-wild-cards`](https://hackage.haskell.org/package/safe-wild-cards-1.0.0.2) package can be used instead of the trick described in this post.
+
+Check out the full discussion for some more insightful comments.
