@@ -87,4 +87,6 @@ u/Faucelme [pointed](https://www.reddit.com/r/haskell/comments/1d9kexm/comment/l
 
 u/enobayram [pointed](https://www.reddit.com/r/haskell/comments/1d9kexm/comment/l7is4v1/) out that the [`safe-wild-cards`](https://hackage.haskell.org/package/safe-wild-cards-1.0.0.2) package can be used instead of the trick described in this post.
 
+u/Innf107 [pointed](https://www.reddit.com/r/haskell/comments/1d9kexm/comment/l7fsz8c/) out that the coverage checked hates the trick and it indeed does if you add another constructor with fields to the `R` data type.
+
 Check out the full discussion for some more insightful comments.
