@@ -95,7 +95,7 @@ owl = lam.f $ lam.g $ app var.g (app var.f var.g)
 
 And that's it.
 
-## Scoped ([full code]())
+## Scoped ([full code](./src/Scoped.hs))
 
 To check well-scopedness we need to somehow only allow those variables to be referenced that were bound before. One way to do that is to make `lam` introduce a contraint required by `var`, for every variable. How do we add a local constraint for an arbirary `Symbol` though? Well, we can simpy make it up using the same way `unsafeCoerce` makes up a constraint between two types:
 
