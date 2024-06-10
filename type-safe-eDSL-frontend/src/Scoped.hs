@@ -26,7 +26,7 @@ import GHC.Exts
 import Unsafe.Coerce (UnsafeEquality (..), unsafeEqualityProof)
 
 type IsScoped :: Symbol -> ()
-type family IsScoped name
+type family IsScoped name 
 
 type InScope name = IsScoped name ~ '()
 
@@ -40,19 +40,28 @@ instance (res ~ ((Enter name -> Term) -> Term), KnownSymbol name) =>
         case unsafeEqualityProof @(IsScoped name) @'() of
             UnsafeRefl -> Lam (symbolVal' (proxy# @name)) $ k Enter
 
-instance (res ~ Term, KnownSymbol name, InScope name) => HasField name (Prefix "var") res where
+type FreeVariableError :: Symbol -> Constraint
+type family FreeVariableError name where
+    FreeVariableError name =
+        TypeError ('Text "Can't reference a free variable: ‘" :<>: 'Text name :<>: 'Text "’")
+
+type ThrowOnFree :: Constraint -> () -> Constraint
+type family ThrowOnFree err scoped where
+    ThrowOnFree _   '() = ()
+    ThrowOnFree err  _  = err
+
+instance (res ~ Term, KnownSymbol name, ThrowOnFree (FreeVariableError name) (IsScoped name)) =>
+        HasField name (Prefix "var") res where
     getField _ = Var $ symbolVal' (proxy# @name)
-
-var :: Prefix "var"
-var = Prefix
-
-lam :: Prefix "lam"
-lam = Prefix
-
-app :: Term -> Term -> Term
-app = App
 
 -- >>> print owl
 -- Lam "f" (Lam "g" (App (Var "g") (App (Var "f") (Var "g"))))
 owl :: Term
 owl = lam.f $ \Enter -> lam.g $ \Enter -> app var.g (app var.f var.g)
+
+-- -- error: [GHC-64725]
+-- --     • Can't reference a free variable: ‘x’
+-- --     • In the expression: var.x
+-- --       In an equation for ‘free’: free = var.x
+-- free :: Term
+-- free = var.x

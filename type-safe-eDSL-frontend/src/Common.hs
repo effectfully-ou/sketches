@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 
 module Common where
@@ -13,3 +14,12 @@ data Term
 
 type Prefix :: Symbol -> Type
 data Prefix prefix = Prefix
+
+var :: Prefix "var"
+var = Prefix
+
+lam :: Prefix "lam"
+lam = Prefix
+
+app :: Term -> Term -> Term
+app = App

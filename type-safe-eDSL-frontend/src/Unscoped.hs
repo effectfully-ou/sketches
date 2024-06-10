@@ -23,15 +23,6 @@ instance (res ~ (Term -> Term), KnownSymbol name) => HasField name (Prefix "lam"
 instance (res ~ Term, KnownSymbol name) => HasField name (Prefix "var") res where
     getField _ = Var $ symbolVal' (proxy# @name)
 
-var :: Prefix "var"
-var = Prefix
-
-lam :: Prefix "lam"
-lam = Prefix
-
-app :: Term -> Term -> Term
-app = App
-
 -- >>> print owl
 -- Lam "f" (Lam "g" (App (Var "g") (App (Var "f") (Var "g"))))
 owl :: Term
