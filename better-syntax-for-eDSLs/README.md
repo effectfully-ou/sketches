@@ -1,4 +1,4 @@
-# type-safe-eDSL-frontend
+# Better syntax for eDSLs
 
 ## The idea
 
@@ -60,7 +60,7 @@ and as such is basically just a nicer syntax for creating ASTs manually.
 
 The rest of the post is implementing the syntax and a static check for it ensuring well-scopedness of terms.
 
-## Unscoped ([full code]())
+## Unscoped ([full code]((./src/Unscoped.hs)))
 
 Without the well-scopedness check all we need is this:
 
