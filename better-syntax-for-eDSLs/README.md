@@ -158,4 +158,6 @@ error: [GHC-64725]
       In an equation for ‘free’: free = var.x
 ```
 
-The full code includes such error messages.
+The [full code](./src/Scoped.hs) includes such error messages.
+
+TODO: reference Nightfall
