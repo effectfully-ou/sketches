@@ -97,7 +97,7 @@ And that's it.
 
 ## Scoped ([full code](./src/Scoped.hs))
 
-To check well-scopedness we need to somehow only allow those variables to be referenced that were bound before. One way to do that is to make `lam` introduce a contraint required by `var`, for every variable. How do we add a local constraint for an arbirary `Symbol` though? Well, we can simpy make it up using the same way `unsafeCoerce` makes up a constraint between two types:
+To check well-scopedness we need to somehow only allow those variables to be referenced that were bound before. One way to do that is to make `lam` introduce a contraint required by `var`, for every variable. How do we add a local constraint for an arbirary `Symbol` though? Well, we can simpy make it up in the same way that `unsafeCoerce` makes up a constraint between two types (we could perhaps use [`reflection`](https://hackage.haskell.org/package/reflection) as well, but I haven't tried that):
 
 ```haskell
 type IsScoped :: Symbol -> ()
@@ -160,4 +160,4 @@ error: [GHC-64725]
 
 The [full code](./src/Scoped.hs) includes such error messages.
 
-TODO: reference Nightfall
+I've [used](https://github.com/polyvariadic/nightfall/blob/trashcan/type-inference-for-record-dot-syntax/src/Nightfall/Lang/Syntax/DotRecord.hs) this trick for a small statically typed eDSL and it worked okay, but admittedly an `INCOHERENT` instance there is quite brittle (it's used in a check preventing shadowing) and associating info with type-level variable names when there are constraints floating around and blinding GHC's sight can be quite nasty as well, so do expect things to get difficult in complex cases. Maybe the trick isn't worth it beyond simple untyped cases.
