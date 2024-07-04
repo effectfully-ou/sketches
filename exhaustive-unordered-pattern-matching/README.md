@@ -52,6 +52,18 @@ serializeR (R _ _ :& R {b, a}) = do
     serializeB b
 ```
 
+**UPD**
+
+u/rampion [suggested](https://www.reddit.com/r/haskell/comments/1d9kexm/comment/lbatjee/) to use this implementation instead:
+
+```haskell
+pattern (:&) :: a -> a -> a
+pattern a0:&a1 <- a0@a1
+{-# COMPLETE (:&) #-}
+```
+
+which magically works despite `@` not working directly without a pattern synonym. Go figure!
+
 With this approach changing the order of fields in `R` will not change the semantics of `serializeR` and adding new fields to `R` will cause pattern matching to fail with an error message like
 
 ```

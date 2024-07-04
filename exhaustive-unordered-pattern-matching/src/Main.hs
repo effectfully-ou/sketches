@@ -20,9 +20,13 @@ serializeB = mempty
 dup :: a -> (a, a)
 dup x = (x, x)
 
-infixr 0 :&
+-- infixr 0 :&
+-- pattern (:&) :: a -> a -> a
+-- pattern p1 :& p2 <- (dup -> (p1, p2))
+-- {-# COMPLETE (:&) #-}
+
 pattern (:&) :: a -> a -> a
-pattern p1 :& p2 <- (dup -> (p1, p2))
+pattern a0:&a1 <- a0@a1
 {-# COMPLETE (:&) #-}
 
 serializeR :: R -> IO ()
